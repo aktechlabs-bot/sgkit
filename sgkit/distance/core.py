@@ -139,7 +139,9 @@ def pairwise(
             if _i1 <= _i2:
                 items_to_stack.append(item_to_stack)
             else:
-                nans = da.full(item_to_stack.shape, fill_value=np.nan)
+                nans = da.full(item_to_stack.shape, fill_value=np.nan).rechunk(
+                    item_to_stack.chunksize
+                )
                 items_to_stack.append(nans)
         return da.stack(items_to_stack, axis=-1)
 
