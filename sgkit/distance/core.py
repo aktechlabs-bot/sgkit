@@ -127,7 +127,6 @@ def pairwise(
     I2 = range(x.numblocks[0])
 
     def _get_items_to_stack(_i1: int, _i2: int) -> da.array:
-        items_to_stack = []
         item_to_stack = map_fn(
             x.blocks[_i1, 0][:, None, :],
             x.blocks[_i2, 0],
@@ -138,13 +137,11 @@ def pairwise(
         # calculation of map function on the lower triangular matrix
         # by filling it will nan
         if _i1 <= _i2:
-            items_to_stack.append(item_to_stack)
+            return item_to_stack
         else:
-            nans = da.full(item_to_stack.shape, fill_value=np.nan).rechunk(
+            return da.full(item_to_stack.shape, fill_value=np.nan).rechunk(
                 item_to_stack.chunksize
             )
-            items_to_stack.append(nans)
-        return da.stack(items_to_stack, axis=-1)
 
     concatenate_i2 = []
     for i1 in I1:
@@ -155,12 +152,10 @@ def pairwise(
         concatenate_i2.append(da.concatenate(stacked_items, axis=1))
     x_map = da.concatenate(concatenate_i2, axis=0)
 
-    assert x_map.shape == (len(x), len(x), n_map_param, x.numblocks[1])
+    assert x_map.shape == (len(x), len(x), n_map_param)
+    x_map = x_map.reshape((len(x), len(x)))
 
-    # Apply reduction to arrays with shape (n_map_param, n_column_chunk),
-    # which would easily fit in memory
-    x_reduce = reduce_fn(x_map.rechunk((None, None, -1, -1)))
     # This returns the symmetric matrix, since we only calculate upper
     # triangular matrix, we fill up the lower triangular matrix by upper
-    x_distance = da.triu(x_reduce, 1) + da.triu(x_reduce).T
+    x_distance = da.triu(x_map, 1) + da.triu(x_map).T
     return x_distance

@@ -207,7 +207,7 @@ def euclidean_map(x: ArrayLike, y: ArrayLike, _: ArrayLike, out: ArrayLike) -> N
 
     out[:] = np.array(
         [
-            np.sum((x - y) ** 2),
+            np.sqrt(np.sum((x - y) ** 2)),
         ]
     )
 
