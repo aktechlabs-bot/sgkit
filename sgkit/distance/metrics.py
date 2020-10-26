@@ -1,5 +1,7 @@
 """This module implements various distance metrics."""
 
+import math
+
 import numpy as np
 from numba import guvectorize
 
@@ -75,11 +77,11 @@ def correlation(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:
 
 @guvectorize(  # type: ignore
     [
-        "void(float32[:], float32[:], float32[:])",
-        "void(float64[:], float64[:], float64[:])",
-        "void(int8[:], int8[:], float64[:])",
+        "void(float32[:, :], float32[:, :], float32[:, :])",
+        "void(float64[:, :], float64[:, :], float64[:, :])",
+        "void(int8[:, :], int8[:, :], float64[:, :])",
     ],
-    "(n),(n)->()",
+    "(m, k),(n, k)->(m, n)",
 )
 def euclidean(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:
     """Calculates the euclidean distance between two vectors.
@@ -113,10 +115,14 @@ def euclidean(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:
     0.0
 
     """
-    square_sum = 0.0
+    o = x.shape[-1]
     m = x.shape[0]
-    # Ignore missing values
-    for i in range(m):
-        if x[i] >= 0 and y[i] >= 0:
-            square_sum += (x[i] - y[i]) ** 2
-    out[0] = np.sqrt(square_sum)
+    n = y.shape[0]
+
+    for j in range(m):
+        for k in range(n):
+            square_sum = 0.0
+            for i in range(o):
+                if x[j, i] >= 0 and y[k, i] >= 0:
+                    square_sum += (x[j, i] - y[k, i]) ** 2
+            out[j, k] = math.sqrt(square_sum)

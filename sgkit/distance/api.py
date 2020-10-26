@@ -89,7 +89,7 @@ def pairwise_distance(
     x = da.asarray(x)
     x_distance = da.blockwise(
         # Lambda wraps reshape for broadcast
-        lambda _x, _y: metric_ufunc(_x[:, None, :], _y),
+        metric_ufunc,
         "jk",
         x,
         "ji",
