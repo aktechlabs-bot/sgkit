@@ -1,16 +1,13 @@
-import typing
-
+import dask.array as da
 import numpy as np
 
 from sgkit.distance import metrics
-from sgkit.distance.core import pairwise
 from sgkit.typing import ArrayLike
 
 
-def pdist(
+def pairwise_distance(
     x: ArrayLike,
     metric: str = "euclidean",
-    chunks: typing.Optional[typing.Tuple[int, int]] = None,
 ) -> np.ndarray:
     """Calculates the pairwise distance between all pairs of vectors in the
     given two dimensional array x. The API is similar to:
@@ -39,36 +36,50 @@ def pdist(
     Examples
     --------
 
-    >>> from sgkit.distance.api import pdist
+    >>> from sgkit.distance.api import pairwise_distance
     >>> import dask.array as da
     >>> x = da.array([[6, 4, 1,], [4, 5, 2], [9, 7, 3]]).rechunk(2, 2)
-    >>> pdist(x, metric='euclidean')
+    >>> pairwise_distance(x, metric='euclidean')
     array([[0.        , 2.44948974, 4.69041576],
            [2.44948974, 0.        , 5.47722558],
            [4.69041576, 5.47722558, 0.        ]])
 
     >>> import numpy as np
     >>> x = np.array([[6, 4, 1,], [4, 5, 2], [9, 7, 3]])
-    >>> pdist(x, metric='euclidean', chunks=(2, 2))
+    >>> pairwise_distance(x, metric='euclidean', chunks=(2, 2))
     array([[0.        , 2.44948974, 4.69041576],
            [2.44948974, 0.        , 5.47722558],
            [4.69041576, 5.47722558, 0.        ]])
     """
 
     try:
-        distance_map_ufunc = getattr(metrics, f"{metric}_map")
-        distance_reduce_ufunc = getattr(metrics, f"{metric}_reduce")
+        map_fn = getattr(metrics, f"{metric}_map")
+        reduce_fn = getattr(metrics, f"{metric}_reduce")
     except AttributeError:
         raise NotImplementedError(
             f"Given metric: {metric} is not implemented. "
             f"Available metrics are: {metrics.N_MAP_PARAM.keys()}"
         )
 
-    x_corr = pairwise(
+    def _map_reduce(_x: ArrayLike, _y: ArrayLike) -> ArrayLike:
+        num_elements = len(_x)
+        items_to_stack = []
+        for i in range(num_elements):
+            x_, y_ = _x[i], _y[i]
+            items_to_stack.append(
+                map_fn(x_[:, None, :], y_, np.empty(metrics.N_MAP_PARAM[metric]))
+            )
+        stacked_items = da.stack(items_to_stack, axis=-1)
+        return reduce_fn(stacked_items.rechunk((None, None, -1, -1)))
+
+    x_distance = da.blockwise(
+        _map_reduce,
+        "jk",
         x,
-        distance_map_ufunc,
-        distance_reduce_ufunc,
-        metrics.N_MAP_PARAM[metric],
-        chunks,
+        "ji",
+        x,
+        "ki",
+        dtype="float64",
     )
-    return x_corr.compute()
+    x_distance = da.triu(x_distance, 1) + da.triu(x_distance).T
+    return x_distance.compute()
