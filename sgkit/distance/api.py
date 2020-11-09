@@ -2,6 +2,7 @@ import dask.array as da
 import numpy as np
 
 from sgkit.distance import metrics
+from sgkit.distance.metrics import N_MAP_PARAM
 from sgkit.typing import ArrayLike
 
 
@@ -83,21 +84,51 @@ def pairwise_distance(
     """
 
     try:
-        metric_ufunc = getattr(metrics, metric)
+        map_fn = getattr(metrics, f"{metric}_map")
+        reduce_fn = getattr(metrics, f"{metric}_reduce")
     except AttributeError:
         raise NotImplementedError(f"Given metric: {metric} is not implemented.")
 
     x = da.asarray(x)
-    x_distance = da.blockwise(
-        # Lambda wraps reshape for broadcast
-        lambda _x, _y: metric_ufunc(_x[:, None, :], _y),
-        "jk",
-        x,
-        "ji",
-        x,
-        "ki",
-        dtype="float64",
-        concatenate=True,
-    )
-    x_distance = da.triu(x_distance, 1) + da.triu(x_distance).T
+
+    I1 = range(x.numblocks[0])
+    I2 = range(x.numblocks[0])
+    J = range(x.numblocks[1])
+
+    def _get_items_to_stack(_i1: int, _i2: int) -> da.array:
+        items_to_stack = []
+        for j in J:
+            item_to_stack = map_fn(
+                x.blocks[_i1, j][:, None, :],
+                x.blocks[_i2, j],
+                np.empty(N_MAP_PARAM.get(metric)),
+            )
+
+            # Since the resultant array is a symmetric matrix we avoid the
+            # calculation of map function on the lower triangular matrix
+            # by filling it will nan
+            if _i1 <= _i2:
+                items_to_stack.append(item_to_stack)
+            else:
+                nans = da.full(item_to_stack.shape, fill_value=np.nan)
+                items_to_stack.append(nans)
+        return da.stack(items_to_stack, axis=-1)
+
+    concatenate_i2 = []
+    for i1 in I1:
+        stacked_items = []
+        for i2 in I2:
+            stacks = _get_items_to_stack(i1, i2)
+            stacked_items.append(stacks)
+        concatenate_i2.append(da.concatenate(stacked_items, axis=1))
+    x_map = da.concatenate(concatenate_i2, axis=0)
+
+    assert x_map.shape == (len(x), len(x), N_MAP_PARAM.get(metric), x.numblocks[1])
+
+    # Apply reduction to arrays with shape (n_map_param, n_column_chunk),
+    # which would easily fit in memory
+    x_reduce = reduce_fn(x_map.rechunk((None, None, -1, -1)))
+    # This returns the symmetric matrix, since we only calculate upper
+    # triangular matrix, we fill up the lower triangular matrix by upper
+    x_distance = da.triu(x_reduce, 1) + da.triu(x_reduce).T
     return x_distance.compute()
