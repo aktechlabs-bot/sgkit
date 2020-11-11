@@ -136,16 +136,19 @@ def test_missing_values(
 
 
 @pytest.mark.parametrize(
-    "dtype, expected",
+    "metric, dtype, expected",
     [
-        ("i8", "float64"),
-        ("f4", "float32"),
-        ("f8", "float64"),
+        ("euclidean", "i8", "float64"),
+        ("euclidean", "f4", "float32"),
+        ("euclidean", "f8", "float64"),
+        ("correlation", "i8", "float64"),
+        ("correlation", "f4", "float32"),
+        ("correlation", "f8", "float64"),
     ],
 )
-def test_data_types(dtype, expected):
+def test_data_types(metric, dtype, expected):
     x = get_vectors(dtype=dtype)
-    distance_matrix = pairwise_distance(x)
+    distance_matrix = pairwise_distance(x, metric=metric)
     assert distance_matrix.dtype.name == expected
 
 
