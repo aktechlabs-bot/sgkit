@@ -17,7 +17,14 @@ N_MAP_PARAM = {
 
 
 @guvectorize(  # type: ignore
-    ["void(float64[:], float64[:], float64[:], float64[:])"], "(n),(n),(p)->(p)"
+    [
+        "void(float64[:], float64[:], float64[:], float64[:])",
+        "void(float32[:], float32[:], float32[:], float32[:])",
+        "void(int8[:], int8[:], int8[:], float64[:])",
+    ],
+    "(n),(n),(p)->(p)",
+    nopython=True,
+    cache=True,
 )
 def correlation_map(x: ArrayLike, y: ArrayLike, _: ArrayLike, out: ArrayLike) -> None:
     """Pearson correlation "map" function for partial vector pairs.
@@ -75,12 +82,47 @@ def correlation_map(x: ArrayLike, y: ArrayLike, _: ArrayLike, out: ArrayLike) ->
     >>> out.shape
     (2, 2, 6)
     """
+
+    m = x.shape[0]
+    valid_indices = np.zeros(m, dtype=np.float64)
+
+    for i in range(m):
+        if x[i] >= 0 and y[i] >= 0:
+            valid_indices[i] = 1
+
+    valid_shape = valid_indices.sum()
+    _x = np.zeros(int(valid_shape), dtype=x.dtype)
+    _y = np.zeros(int(valid_shape), dtype=y.dtype)
+
+    # Ignore missing values
+    valid_idx = 0
+    for i in range(valid_indices.shape[0]):
+        if valid_indices[i] > 0:
+            _x[valid_idx] = x[i]
+            _y[valid_idx] = y[i]
+            valid_idx += 1
+
     out[:] = np.array(
-        [np.sum(x), np.sum(y), np.sum(x * x), np.sum(y * y), np.sum(x * y), len(x)]
+        [
+            np.sum(_x),
+            np.sum(_y),
+            np.sum(_x * _x),
+            np.sum(_y * _y),
+            np.sum(_x * _y),
+            len(_x),
+        ]
     )
 
 
-@guvectorize(["void(float64[:,:], float64[:])"], "(p,m)->()")  # type: ignore
+@guvectorize(
+    [
+        "void(float64[:,:], float64[:])",
+        "void(float32[:,:], float32[:])",
+    ],
+    "(p,m)->()",
+    nopython=True,
+    cache=True,
+)  # type: ignore
 def correlation_reduce(v: ArrayLike, out: ArrayLike) -> None:
     """Corresponding "reduce" function for pearson correlation
 
@@ -142,11 +184,22 @@ def correlation_reduce(v: ArrayLike, out: ArrayLike) -> None:
     num = n * v[4] - v[0] * v[1]
     denom1 = np.sqrt(n * v[2] - v[0] ** 2)
     denom2 = np.sqrt(n * v[3] - v[1] ** 2)
-    out[0] = 1 - (num / (denom1 * denom2))
+    denom = denom1 * denom2
+    value = np.nan
+    if denom > 0:
+        value = 1 - (num / denom)
+    out[0] = value
 
 
 @guvectorize(  # type: ignore
-    ["void(float64[:], float64[:], float64[:], float64[:])"], "(n),(n),(p)->(p)"
+    [
+        "void(float64[:], float64[:], float64[:], float64[:])",
+        "void(float32[:], float32[:], float32[:], float32[:])",
+        "void(int8[:], int8[:], int8[:], float64[:])",
+    ],
+    "(n),(n),(p)->(p)",
+    nopython=True,
+    cache=True,
 )
 def euclidean_map(x: ArrayLike, y: ArrayLike, _: ArrayLike, out: ArrayLike) -> None:
     """Euclidean distance "map" function for partial vector pairs.
@@ -205,14 +258,24 @@ def euclidean_map(x: ArrayLike, y: ArrayLike, _: ArrayLike, out: ArrayLike) -> N
     (2, 2, 1)
     """
 
-    out[:] = np.array(
-        [
-            np.sum((x - y) ** 2),
-        ]
-    )
+    square_sum = 0.0
+    m = x.shape[0]
+    # Ignore missing values
+    for i in range(m):
+        if x[i] >= 0 and y[i] >= 0:
+            square_sum += (x[i] - y[i]) ** 2
+    out[:] = square_sum
 
 
-@guvectorize(["void(float64[:,:], float64[:])"], "(p,m)->()")  # type: ignore
+@guvectorize(
+    [
+        "void(float64[:,:], float64[:])",
+        "void(float32[:,:], float32[:])",
+    ],
+    "(p,m)->()",
+    nopython=True,
+    cache=True,
+)  # type: ignore
 def euclidean_reduce(v: ArrayLike, out: ArrayLike) -> None:
     """Corresponding "reduce" function
 
@@ -230,4 +293,5 @@ def euclidean_reduce(v: ArrayLike, out: ArrayLike) -> None:
     An ndaray, which contains the result of the calculation of the application
     of euclidean distance on all the chunks.
     """
+
     out[0] = np.sqrt(np.sum(v[0]))
