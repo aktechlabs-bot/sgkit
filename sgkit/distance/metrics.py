@@ -193,8 +193,8 @@ def correlation_reduce(v: ArrayLike, out: ArrayLike) -> None:
 
 @guvectorize(  # type: ignore
     [
-        "void(float64[:], float64[:], float64[:], float64[:])",
         "void(float32[:], float32[:], float32[:], float32[:])",
+        "void(float64[:], float64[:], float64[:], float64[:])",
         "void(int8[:], int8[:], int8[:], float64[:])",
     ],
     "(n),(n),(p)->(p)",
@@ -269,8 +269,8 @@ def euclidean_map(x: ArrayLike, y: ArrayLike, _: ArrayLike, out: ArrayLike) -> N
 
 @guvectorize(
     [
-        "void(float64[:,:], float64[:])",
         "void(float32[:,:], float32[:])",
+        "void(float64[:,:], float64[:])",
     ],
     "(p,m)->()",
     nopython=True,

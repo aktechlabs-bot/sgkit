@@ -101,7 +101,7 @@ def pairwise_distance(
             item_to_stack = map_fn(
                 x.blocks[_i1, j][:, None, :],
                 x.blocks[_i2, j],
-                np.empty(N_MAP_PARAM.get(metric)),
+                np.empty(N_MAP_PARAM.get(metric), dtype=x.blocks[_i2, j].dtype),
             )
 
             # Since the resultant array is a symmetric matrix we avoid the
@@ -110,7 +110,9 @@ def pairwise_distance(
             if _i1 <= _i2:
                 items_to_stack.append(item_to_stack)
             else:
-                nans = da.full(item_to_stack.shape, fill_value=np.nan)
+                nans = da.full(
+                    item_to_stack.shape, fill_value=np.nan, dtype=item_to_stack.dtype
+                )
                 items_to_stack.append(nans)
         return da.stack(items_to_stack, axis=-1)
 
