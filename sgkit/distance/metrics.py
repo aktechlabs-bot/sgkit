@@ -25,6 +25,7 @@ N_MAP_PARAM = {
     "(n),(n),(p)->(p)",
     nopython=True,
     cache=True,
+    target="parallel",
 )
 def correlation_map(x: ArrayLike, y: ArrayLike, _: ArrayLike, out: ArrayLike) -> None:
     """Pearson correlation "map" function for partial vector pairs.
@@ -122,6 +123,7 @@ def correlation_map(x: ArrayLike, y: ArrayLike, _: ArrayLike, out: ArrayLike) ->
     "(p,m)->()",
     nopython=True,
     cache=True,
+    target="parallel",
 )  # type: ignore
 def correlation_reduce(v: ArrayLike, out: ArrayLike) -> None:
     """Corresponding "reduce" function for pearson correlation
@@ -200,6 +202,7 @@ def correlation_reduce(v: ArrayLike, out: ArrayLike) -> None:
     "(n),(n),(p)->(p)",
     nopython=True,
     cache=True,
+    target="parallel",
 )
 def euclidean_map(x: ArrayLike, y: ArrayLike, _: ArrayLike, out: ArrayLike) -> None:
     """Euclidean distance "map" function for partial vector pairs.
@@ -275,6 +278,7 @@ def euclidean_map(x: ArrayLike, y: ArrayLike, _: ArrayLike, out: ArrayLike) -> N
     "(p,m)->()",
     nopython=True,
     cache=True,
+    target="parallel",
 )  # type: ignore
 def euclidean_reduce(v: ArrayLike, out: ArrayLike) -> None:
     """Corresponding "reduce" function
