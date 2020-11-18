@@ -103,34 +103,44 @@ def pairwise_distance(
                 x.blocks[_i2, j],
                 np.empty(N_MAP_PARAM.get(metric), dtype=x.blocks[_i2, j].dtype),
             )
+            items_to_stack.append(item_to_stack)
 
             # Since the resultant array is a symmetric matrix we avoid the
             # calculation of map function on the lower triangular matrix
             # by filling it will nan
-            if _i1 <= _i2:
-                items_to_stack.append(item_to_stack)
-            else:
-                nans = da.full(
-                    item_to_stack.shape, fill_value=np.nan, dtype=item_to_stack.dtype
-                )
-                items_to_stack.append(nans)
+            # if _i1 <= _i2:
+            #     items_to_stack.append(item_to_stack)
+            # else:
+            #     nans = da.full(
+            #         item_to_stack.shape, fill_value=np.nan, dtype=item_to_stack.dtype
+            #     )
+            #     items_to_stack.append(nans)
         return da.stack(items_to_stack, axis=-1)
 
     concatenate_i2 = []
     for i1 in I1:
         stacked_items = []
         for i2 in I2:
-            stacks = _get_items_to_stack(i1, i2)
-            stacked_items.append(stacks)
-        concatenate_i2.append(da.concatenate(stacked_items, axis=1))
-    x_map = da.concatenate(concatenate_i2, axis=0)
+            if i1 <= i2:
+                stacks = _get_items_to_stack(i1, i2)
+                stacked_items.append(stacks)
+        if stacked_items:
+            concatenate_i2.append(da.concatenate(stacked_items, axis=1))
 
-    assert x_map.shape == (len(x), len(x), N_MAP_PARAM.get(metric), x.numblocks[1])
+    # import ipdb as pdb; pdb.set_trace()
+    # x_map = da.concatenate(concatenate_i2, axis=0)
+
+    def reduce(x_map):
+        return reduce_fn(x_map.rechunk((None, None, -1, -1))).reshape(-1)
+
+    x_distance = da.concatenate([reduce(item) for item in concatenate_i2])
+
+    # assert x_map.shape == (len(x), len(x), N_MAP_PARAM.get(metric), x.numblocks[1])
 
     # Apply reduction to arrays with shape (n_map_param, n_column_chunk),
     # which would easily fit in memory
-    x_reduce = reduce_fn(x_map.rechunk((None, None, -1, -1)))
+    # x_reduce = reduce_fn(x_map.rechunk((None, None, -1, -1)))
     # This returns the symmetric matrix, since we only calculate upper
     # triangular matrix, we fill up the lower triangular matrix by upper
-    x_distance = da.triu(x_reduce, 1) + da.triu(x_reduce).T
+    # x_distance = da.triu(x_reduce, 1) + da.triu(x_reduce).T
     return x_distance.compute()
