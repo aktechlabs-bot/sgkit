@@ -83,21 +83,30 @@ def pairwise_distance(
     """
 
     try:
-        metric_ufunc = getattr(metrics, metric)
+        metric_map_ufunc = getattr(metrics, f"{metric}_map")
+        metric_reduce_ufunc = getattr(metrics, f"{metric}_reduce")
+        n_map_param = metrics.N_MAP_PARAM[metric]
     except AttributeError:
         raise NotImplementedError(f"Given metric: {metric} is not implemented.")
 
-    x = da.asarray(x)
-    x_distance = da.blockwise(
-        # Lambda wraps reshape for broadcast
-        lambda _x, _y: metric_ufunc(_x[:, None, :], _y),
-        "jk",
+    def _pairwise(f, g, h):
+        result = metric_map_ufunc(f[:, None, :], g, h)
+        return result[..., np.newaxis]
+
+    out = da.blockwise(
+        _pairwise,
+        'ijkl',
         x,
-        "ji",
+        'ik',
         x,
-        "ki",
-        dtype="float64",
-        concatenate=True,
+        'jk',
+        np.empty(n_map_param, dtype=x.dtype),
+        "l",
+        adjust_chunks={'k': 1},
+        dtype=x.dtype,
+        concatenate=False,
     )
-    x_distance = da.triu(x_distance, 1) + da.triu(x_distance).T
-    return x_distance.compute()
+
+    out_new = out.reshape(out.shape[:-1] + (1, -1))
+    out_new = out_new.reshape(out_new.shape[:-2] + (out_new.shape[-1],))
+    return metric_reduce_ufunc(out_new.rechunk((None, None, -1, -1))).compute()

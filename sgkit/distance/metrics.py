@@ -1,52 +1,130 @@
-"""This module implements various distance metrics."""
-
-import numpy as np
 from numba import guvectorize
+import numpy as np
 
-from sgkit.typing import ArrayLike
+
+N_MAP_PARAM = {
+    "correlation": 6,
+    "euclidean": 1,
+}
 
 
 @guvectorize(  # type: ignore
     [
-        "void(float32[:], float32[:], float32[:])",
-        "void(float64[:], float64[:], float64[:])",
-        "void(int8[:], int8[:], float64[:])",
+        "void(float32[:], float32[:], float32[:], float32[:])",
+        "void(float64[:], float64[:], float64[:], float64[:])",
+        "void(int8[:], int8[:], int8[:], float64[:])",
     ],
-    "(n),(n)->()",
+    "(n),(n),(p)->(p)",
     nopython=True,
     cache=True,
 )
-def correlation(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:  # pragma: no cover
-    """Calculates the correlation between two vectors.
+def euclidean_map(x, y, _, out) -> None:
+    """Euclidean distance "map" function for partial vector pairs.
 
     Parameters
     ----------
     x
-        [array-like, shape: (M,)]
-        A vector
+        An array chunk, a partial vector
     y
-        [array-like, shape: (M,)]
-        Another vector
+        Another array chunk,  a partial vector
+    _
+        A dummy variable to map the size of output
     out
-        The output array, which has the output of pearson correlation.
+        The output array, which has the output of the map step of "pearson correlation".
 
     Returns
     -------
-    A scalar representing the pearson correlation coefficient between two vectors x and y.
+    An ndaray, which contains the output of the calculation of the application
+    of euclidean distance on the given pair of chunks, without the aggregation.
 
     Examples
     --------
-    >>> from sgkit.distance.metrics import correlation
+
+    >>> from sgkit.distance.metrics import euclidean_map
     >>> import dask.array as da
     >>> import numpy as np
-    >>> x = da.array([4, 3, 2, 3], dtype='i1')
-    >>> y = da.array([5, 6, 7, 0], dtype='i1')
-    >>> correlation(x, y).compute()
-    1.2626128
+    >>> m = da.array([[4, 3, 2, 3], [2, 4, 5, 2], [0, 1, 5, 0], [1, 3, 5, 2], [2, 3, 2, 5]], dtype='i1').rechunk(2, 2)
+    >>> m.compute()
+    array([[4, 3, 2, 3],
+       [2, 4, 5, 2],
+       [0, 1, 5, 0],
+       [1, 3, 5, 2],
+       [2, 3, 2, 5]], dtype=int8)
 
-    >>> correlation(x, x).compute()
-    -1.1920929e-07
+    >>> x = m.blocks[0, 0][:, None, :]
+    >>> y = m.blocks[1, 0]
+    >>> x.compute()
+    array([[[4, 3]],
+
+       [[2, 4]]], dtype=int8)
+    >>> y.compute()
+    array([[0, 1],
+           [1, 3]], dtype=int8)
+    >>> x.shape
+    (2, 1, 2)
+    >>> y.shape
+    (2, 2)
+    >>> out = euclidean_map(x, y, np.empty(1))
+    >>> out.compute()
+    array([[[20.],
+            [ 9.]],
+
+           [[13.],
+            [ 2.]]])
+    >>> out.shape
+    (2, 2, 1)
     """
+
+    square_sum = 0.0
+    m = x.shape[0]
+    # Ignore missing values
+    for i in range(m):
+        if x[i] >= 0 and y[i] >= 0:
+            square_sum += (x[i] - y[i]) ** 2
+    out[:] = square_sum
+
+
+@guvectorize(
+    [
+        "void(float32[:,:], float32[:])",
+        "void(float64[:,:], float64[:])",
+    ],
+    "(p,m)->()",
+    nopython=True,
+    cache=True,
+)
+def euclidean_reduce(v, out) -> None:
+    """Corresponding "reduce" function
+
+    Parameters
+    ----------
+    v
+        The correlation array on which pearson corrections has been
+        applied on chunks
+    out
+        An ndarray, which is a symmetric matrix of pearson correlation
+
+    Returns
+    -------
+
+    An ndaray, which contains the result of the calculation of the application
+    of euclidean distance on all the chunks.
+    """
+    out[0] = np.sqrt(v.sum())
+
+
+@guvectorize(  # type: ignore
+    [
+        "void(float32[:], float32[:], float32[:], float32[:])",
+        "void(float64[:], float64[:], float64[:], float64[:])",
+        "void(int8[:], int8[:], int8[:], float64[:])",
+    ],
+    "(n),(n),(p)->(p)",
+    nopython=True,
+    cache=True,
+)
+def correlation_map(x, y, _, out) -> None:
+    """Pearson correlation "map" function for partial vector pairs."""
     m = x.shape[0]
     valid_indices = np.zeros(m, dtype=np.float64)
 
@@ -66,61 +144,36 @@ def correlation(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:  # pragma: 
             _y[valid_idx] = y[i]
             valid_idx += 1
 
-    cov = ((_x - _x.mean()) * (_y - _y.mean())).sum()
-    denom = (_x.std() * _y.std()) / _x.shape[0]
+    out[:] = np.array(
+        [
+            np.sum(_x),
+            np.sum(_y),
+            np.sum(_x * _x),
+            np.sum(_y * _y),
+            np.sum(_x * _y),
+            len(_x),
+        ]
+    )
 
-    value = np.nan
-    if denom > 0:
-        value = 1.0 - (cov / (_x.std() * _y.std()) / _x.shape[0])
-    out[0] = value
 
-
-@guvectorize(  # type: ignore
+@guvectorize(
     [
-        "void(float32[:], float32[:], float32[:])",
-        "void(float64[:], float64[:], float64[:])",
-        "void(int8[:], int8[:], float64[:])",
+        "void(float32[:, :], float32[:])",
+        "void(float64[:, :], float64[:])",
     ],
-    "(n),(n)->()",
+    "(p, m)->()",
     nopython=True,
     cache=True,
 )
-def euclidean(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:  # pragma: no cover
-    """Calculates the euclidean distance between two vectors.
-
-    Parameters
-    ----------
-    x
-        [array-like, shape: (M,)]
-        A vector
-    y
-        [array-like, shape: (M,)]
-        Another vector
-    out
-        The output scalar, which has the output of euclidean between two vectors.
-
-    Returns
-    -------
-    A scalar representing the euclidean distance between two vectors x and y.
-
-    Examples
-    --------
-    >>> from sgkit.distance.metrics import euclidean
-    >>> import dask.array as da
-    >>> import numpy as np
-    >>> x = da.array([4, 3, 2, 3], dtype='i1')
-    >>> y = da.array([5, 6, 7, 0], dtype='i1')
-    >>> euclidean(x, y).compute()
-    6.6332495807108
-
-    >>> euclidean(x, x).compute()
-    0.0
-
-    """
-    square_sum = 0.0
-    m = x.shape[0]
-    # Ignore missing values
-    for i in range(m):
-        if x[i] >= 0 and y[i] >= 0:
-            square_sum += (x[i] - y[i]) ** 2
-    out[0] = np.sqrt(square_sum)
+def correlation_reduce(v, out) -> None:
+    """Corresponding "reduce" function for pearson correlation"""
+    v = v.sum(axis=0)
+    n = v[5]
+    num = n * v[4] - v[0] * v[1]
+    denom1 = np.sqrt(n * v[2] - v[0] ** 2)
+    denom2 = np.sqrt(n * v[3] - v[1] ** 2)
+    denom = denom1 * denom2
+    value = np.nan
+    if denom > 0:
+        value = 1 - (num / denom)
+    out[0] = value
