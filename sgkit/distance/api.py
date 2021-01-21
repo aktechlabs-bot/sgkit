@@ -6,7 +6,7 @@ from sgkit.distance.metrics import N_MAP_PARAM
 from sgkit.typing import ArrayLike
 
 
-def pairwise_distance(
+def pairwise_distance_blocks(
     x: ArrayLike,
     metric: str = "euclidean",
 ) -> np.ndarray:
@@ -134,3 +134,37 @@ def pairwise_distance(
     # triangular matrix, we fill up the lower triangular matrix by upper
     x_distance = da.triu(x_reduce, 1) + da.triu(x_reduce).T
     return x_distance.compute()
+
+
+def pairwise_distance_blockwise(
+        x: ArrayLike,
+        metric: str = "euclidean",
+) -> np.ndarray:
+    try:
+        metric_map_ufunc = getattr(metrics, f"{metric}_map_")
+        metric_reduce_ufunc = getattr(metrics, f"{metric}_reduce_")
+        n_map_param = metrics.N_MAP_PARAM[metric]
+    except AttributeError:
+        raise NotImplementedError(f"Given metric: {metric} is not implemented.")
+
+    def _pairwise(f, g, h):
+        result = metric_map_ufunc(f[:, None, :], g, h)
+        return result[..., np.newaxis]
+
+    out = da.blockwise(
+        _pairwise,
+        'ijkl',
+        x,
+        'ik',
+        x,
+        'jk',
+        np.empty(n_map_param, dtype=x.dtype),
+        "l",
+        adjust_chunks={'k': 1},
+        dtype=x.dtype,
+        concatenate=False,
+    )
+
+    out_new = out.reshape(out.shape[:-1] + (1, -1))
+    out_new = out_new.reshape(out_new.shape[:-2] + (out_new.shape[-1],))
+    return metric_reduce_ufunc(out_new.rechunk((None, -1, -1, -1))).compute()

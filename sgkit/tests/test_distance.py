@@ -10,7 +10,7 @@ from scipy.spatial.distance import (  # type: ignore
     squareform,
 )
 
-from sgkit.distance.api import pairwise_distance
+from sgkit.distance.api import pairwise_distance_blockwise as pairwise_distance
 from sgkit.typing import ArrayLike
 
 
