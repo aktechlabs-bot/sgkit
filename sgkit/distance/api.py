@@ -109,4 +109,4 @@ def pairwise_distance(
 
     out_new = out.reshape(out.shape[:-1] + (1, -1))
     out_new = out_new.reshape(out_new.shape[:-2] + (out_new.shape[-1],))
-    return metric_reduce_ufunc(out_new.rechunk((None, None, -1, -1))).compute()
+    return metric_reduce_ufunc(out_new.rechunk((None, -1, -1, -1))).compute()
