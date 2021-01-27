@@ -270,17 +270,7 @@ def euclidean_map(x: ArrayLike, y: ArrayLike, _: ArrayLike, out: ArrayLike) -> N
     out[:] = square_sum
 
 
-@guvectorize(
-    [
-        "void(float32[:,:], float32[:])",
-        "void(float64[:,:], float64[:])",
-    ],
-    "(p,m)->()",
-    nopython=True,
-    cache=True,
-    # target="parallel",
-)  # type: ignore
-def euclidean_reduce(v: ArrayLike, out: ArrayLike) -> None:
+def euclidean_reduce(v: ArrayLike) -> None:
     """Corresponding "reduce" function
 
     Parameters
@@ -298,7 +288,7 @@ def euclidean_reduce(v: ArrayLike, out: ArrayLike) -> None:
     of euclidean distance on all the chunks.
     """
 
-    out[0] = np.sqrt(np.sum(v[0]))
+    return np.sqrt(np.einsum("ijkl -> ij", v))
 
 
 @guvectorize(  # type: ignore
@@ -321,17 +311,8 @@ def euclidean_map_(x, y, _, out) -> None:
     out[:] = square_sum
 
 
-@guvectorize(
-    [
-        "void(float32[:,:], float32[:])",
-        "void(float64[:,:], float64[:])",
-    ],
-    "(p,m)->()",
-    nopython=True,
-    cache=True,
-)
-def euclidean_reduce_(v, out) -> None:
-    out[0] = np.sqrt(v.sum())
+def euclidean_reduce_(v) -> None:
+    return np.sqrt(np.einsum("ijkl -> ij", v))
 
 
 @guvectorize(  # type: ignore
