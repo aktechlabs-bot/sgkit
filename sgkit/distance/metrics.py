@@ -312,8 +312,10 @@ def euclidean_map_(x, y, _, out) -> None:
 
 
 def euclidean_reduce_(v) -> None:
-    return np.sqrt(np.einsum("ijkl -> ij", v))
-
+    # This check is not required in dask >= 2021.1.1
+    if v.size != 0:
+        return np.sqrt(np.einsum("ijkl -> ij", v))
+    return v
 
 @guvectorize(  # type: ignore
     [
