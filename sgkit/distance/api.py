@@ -153,18 +153,28 @@ def pairwise_distance_blockwise(
 
     out = da.blockwise(
         _pairwise,
-        'ijkl',
+        'ijk',
         x,
         'ik',
         x,
         'jk',
-        np.empty(n_map_param, dtype=x.dtype),
-        "l",
+        h=np.empty(n_map_param, dtype=x.dtype),
         adjust_chunks={'k': 1},
         dtype=x.dtype,
         concatenate=False,
     )
 
-    out_new = out.reshape(out.shape[:-1] + (1, -1))
-    out_new = out_new.reshape(out_new.shape[:-2] + (out_new.shape[-1],))
-    return metric_reduce_ufunc(out_new.rechunk((None, -1, -1, -1))).compute()
+    r = da.reduction(
+        out,
+        chunk=lambda x_chunk, axis, keepdims: x_chunk,
+        combine=lambda x_chunk, axis, keepdims: x_chunk.sum(-1)[..., np.newaxis],
+        aggregate=lambda x_chunk, axis, keepdims: metric_reduce_ufunc(
+            x_chunk.reshape(x_chunk.shape[:-2] + (-1, n_map_param))
+        ),
+        axis=-1,
+        dtype=np.float,
+        name="pairwise")
+
+    t = da.triu(r)
+    d = t + t.T
+    return d.compute()
