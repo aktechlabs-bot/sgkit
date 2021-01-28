@@ -159,7 +159,6 @@ def pairwise_distance_blockwise(
         x,
         'jk',
         h=np.empty(n_map_param, dtype=x.dtype),
-        adjust_chunks={'k': 1},
         dtype=x.dtype,
         concatenate=False,
     )
