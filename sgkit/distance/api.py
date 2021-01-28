@@ -147,8 +147,8 @@ def pairwise_distance_blockwise(
     except AttributeError:
         raise NotImplementedError(f"Given metric: {metric} is not implemented.")
 
-    def _pairwise(f, g, h):
-        result = metric_map_ufunc(f[:, None, :], g, h)
+    def _pairwise(f, g):
+        result = metric_map_ufunc(f[:, None, :], g, np.empty(n_map_param, dtype=x.dtype))
         return result[..., np.newaxis]
 
     out = da.blockwise(
@@ -158,7 +158,6 @@ def pairwise_distance_blockwise(
         'ik',
         x,
         'jk',
-        h=np.empty(n_map_param, dtype=x.dtype),
         dtype=x.dtype,
         concatenate=False,
     )
