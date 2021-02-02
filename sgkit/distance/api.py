@@ -133,7 +133,7 @@ def pairwise_distance_blocks(
     # This returns the symmetric matrix, since we only calculate upper
     # triangular matrix, we fill up the lower triangular matrix by upper
     x_distance = da.triu(x_reduce, 1) + da.triu(x_reduce).T
-    return x_distance.compute()
+    return x_distance
 
 
 def pairwise_distance_blockwise(
@@ -147,8 +147,10 @@ def pairwise_distance_blockwise(
     except AttributeError:
         raise NotImplementedError(f"Given metric: {metric} is not implemented.")
 
+    metric_param = np.empty(n_map_param, dtype=x.dtype)
+
     def _pairwise(f, g):
-        result = metric_map_ufunc(f[:, None, :], g, np.empty(n_map_param, dtype=x.dtype))
+        result = metric_map_ufunc(f[:, None, :], g, metric_param)
         return result[..., np.newaxis]
 
     out = da.blockwise(
@@ -168,15 +170,22 @@ def pairwise_distance_blockwise(
             x_chunk = x_chunk.reshape(x_chunk.shape[:-2] + (-1, n_map_param))
         return metric_reduce_ufunc(x_chunk)
 
+    def _chunk(x_chunk, axis, keepdims):
+        return x_chunk
+
+    def _combine(x_chunk, axis, keepdims):
+        return x_chunk.sum(-1)[..., np.newaxis]
+
     r = da.reduction(
         out,
-        chunk=lambda x_chunk, axis, keepdims: x_chunk,
-        combine=lambda x_chunk, axis, keepdims: x_chunk.sum(-1)[..., np.newaxis],
+        chunk=_chunk,
+        combine=_combine,
         aggregate=_aggregate,
         axis=-1,
         dtype=np.float,
-        name="pairwise")
+        name="pairwise"
+    )
 
     t = da.triu(r)
     d = t + t.T
-    return d.compute()
+    return d
