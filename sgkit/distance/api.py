@@ -151,7 +151,7 @@ def pairwise_distance_blockwise(
 
     def _pairwise(f, g):
         result = metric_map_ufunc(f[:, None, :], g, metric_param)
-        return result[..., np.newaxis]
+        return result
 
     out = da.blockwise(
         _pairwise,
@@ -165,16 +165,14 @@ def pairwise_distance_blockwise(
     )
 
     def _aggregate(x_chunk, axis, keepdims):
-        # This check is not required in dask >= 2021.1.1
-        if x_chunk.size != 0:
-            x_chunk = x_chunk.reshape(x_chunk.shape[:-2] + (-1, n_map_param))
+        x_chunk = x_chunk.reshape(x_chunk.shape[:-1] + (-1, n_map_param))
         return metric_reduce_ufunc(x_chunk)
 
     def _chunk(x_chunk, axis, keepdims):
         return x_chunk
 
     def _combine(x_chunk, axis, keepdims):
-        return x_chunk.sum(-1)[..., np.newaxis]
+        return x_chunk
 
     r = da.reduction(
         out,
@@ -182,7 +180,8 @@ def pairwise_distance_blockwise(
         combine=_combine,
         aggregate=_aggregate,
         axis=-1,
-        dtype=np.float,
+        dtype=x.dtype,
+        meta=np.ndarray((0, 0), dtype=x.dtype),
         name="pairwise"
     )
 
