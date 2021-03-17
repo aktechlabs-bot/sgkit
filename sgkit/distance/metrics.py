@@ -5,8 +5,9 @@ suffixed by 'reduce'. An entry for the same should be added in the N_MAP_PARAM
 dictionary below.
 """
 
+import math
 import numpy as np
-from numba import guvectorize
+from numba import guvectorize, cuda
 
 from sgkit.typing import ArrayLike
 
@@ -27,7 +28,7 @@ N_MAP_PARAM = {
     nopython=True,
     cache=True,
 )
-def euclidean_map(
+def euclidean_map_cpu(
     x: ArrayLike, y: ArrayLike, _: ArrayLike, out: ArrayLike
 ) -> None:  # pragma: no cover
     """Euclidean distance "map" function for partial vector pairs.
@@ -57,7 +58,7 @@ def euclidean_map(
     out[:] = square_sum
 
 
-def euclidean_reduce(v: ArrayLike) -> ArrayLike:  # pragma: no cover
+def euclidean_reduce_cpu(v: ArrayLike) -> ArrayLike:  # pragma: no cover
     """Corresponding "reduce" function for euclidean distance.
 
     Parameters
@@ -85,7 +86,7 @@ def euclidean_reduce(v: ArrayLike) -> ArrayLike:  # pragma: no cover
     nopython=True,
     cache=True,
 )
-def correlation_map(
+def correlation_map_cpu(
     x: ArrayLike, y: ArrayLike, _: ArrayLike, out: ArrayLike
 ) -> None:  # pragma: no cover
     """Pearson correlation "map" function for partial vector pairs.
@@ -147,7 +148,7 @@ def correlation_map(
     nopython=True,
     cache=True,
 )
-def correlation_reduce(v: ArrayLike, out: ArrayLike) -> None:  # pragma: no cover
+def correlation_reduce_cpu(v: ArrayLike, out: ArrayLike) -> None:  # pragma: no cover
     """Corresponding "reduce" function for pearson correlation
     Parameters
     ----------
@@ -172,3 +173,75 @@ def correlation_reduce(v: ArrayLike, out: ArrayLike) -> None:  # pragma: no cove
     if denom > 0:
         value = 1 - (num / denom)
     out[0] = value
+
+
+@cuda.jit(device=True)
+def distance(a, b):
+    square_sum = 0.0
+    for i in range(a.shape[0]):
+        if a[i] >= 0 and b[i] >= 0:
+            square_sum += (a[i] - b[i]) ** 2
+    return square_sum
+
+
+@cuda.jit
+def euclidean_map_kernal(x, y, out) -> None:
+    i1, i2 = cuda.grid(2)
+    if i1 >= x.shape[0] or i2 >= y.shape[0]:
+        # Quit if (x, y) is outside of valid output array boundary
+        return
+    out[i1][i2] = distance(x[i1], y[i2])
+
+
+@cuda.jit
+def euclidean_reduce_kernal(v, out) -> None:
+    i1, i2 = cuda.grid(2)
+    if i1 >= v.shape[0] or i2 >= v.shape[0]:
+        # Quit if (x, y) is outside of valid output array boundary
+        return
+    reduce_sum = 0.0
+    for i in v[i1, i2][0]:
+        reduce_sum = reduce_sum + i
+    out[i1, i2] = math.sqrt(reduce_sum)
+
+
+def euclidean_map_gpu(f, g):
+    # move input data to the device
+    d_a = cuda.to_device(f)
+    d_b = cuda.to_device(g)
+    # create output data on the device
+    out = np.zeros((f.shape[0], g.shape[0]))
+    #     print(f"out_shape: {out.shape}")
+    d_out = cuda.to_device(out)
+    #     d_out = cuda.device_array_like(d_a)
+
+    # we decide to use 32 blocks, each containing 128 threads
+    blocks_per_grid = (32, 32)
+    threads_per_block = (32, 32)
+    euclidean_map_kernal[blocks_per_grid, threads_per_block](d_a, d_b, d_out)
+    # wait for all threads to complete
+    cuda.synchronize()
+    # copy the output array back to the host system
+    # and print it
+    d_out_host = d_out.copy_to_host()
+    return d_out_host
+
+
+def euclidean_reduce_gpu(v):
+    # move input data to the device
+    d_v = cuda.to_device(v)
+
+    # create output data on the device
+    out = np.zeros((v.shape[0], v.shape[0]))
+    d_out = cuda.to_device(out)
+
+    # we decide to use 32 blocks, each containing 128 threads
+    blocks_per_grid = (32, 32)
+    threads_per_block = (32, 32)
+    euclidean_reduce_kernal[blocks_per_grid, threads_per_block](d_v, d_out)
+    # wait for all threads to complete
+    cuda.synchronize()
+    # copy the output array back to the host system
+    # and print it
+    d_out_host = d_out.copy_to_host()
+    return d_out_host
