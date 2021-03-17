@@ -176,7 +176,7 @@ def correlation_reduce_cpu(v: ArrayLike, out: ArrayLike) -> None:  # pragma: no 
 
 
 @cuda.jit(device=True)
-def distance(a, b):
+def _euclidean_distance(a, b):
     square_sum = 0.0
     for i in range(a.shape[0]):
         if a[i] >= 0 and b[i] >= 0:
@@ -185,24 +185,12 @@ def distance(a, b):
 
 
 @cuda.jit
-def euclidean_map_kernal(x, y, out) -> None:
+def euclidean_map_kernel(x, y, out) -> None:
     i1, i2 = cuda.grid(2)
     if i1 >= x.shape[0] or i2 >= y.shape[0]:
         # Quit if (x, y) is outside of valid output array boundary
         return
-    out[i1][i2] = distance(x[i1], y[i2])
-
-
-@cuda.jit
-def euclidean_reduce_kernal(v, out) -> None:
-    i1, i2 = cuda.grid(2)
-    if i1 >= v.shape[0] or i2 >= v.shape[0]:
-        # Quit if (x, y) is outside of valid output array boundary
-        return
-    reduce_sum = 0.0
-    for i in v[i1, i2][0]:
-        reduce_sum = reduce_sum + i
-    out[i1, i2] = math.sqrt(reduce_sum)
+    out[i1][i2] = _euclidean_distance(x[i1], y[i2])
 
 
 def euclidean_map_gpu(f, g):
@@ -215,10 +203,9 @@ def euclidean_map_gpu(f, g):
     d_out = cuda.to_device(out)
     #     d_out = cuda.device_array_like(d_a)
 
-    # we decide to use 32 blocks, each containing 128 threads
     blocks_per_grid = (32, 32)
     threads_per_block = (32, 32)
-    euclidean_map_kernal[blocks_per_grid, threads_per_block](d_a, d_b, d_out)
+    euclidean_map_kernel[blocks_per_grid, threads_per_block](d_a, d_b, d_out)
     # wait for all threads to complete
     cuda.synchronize()
     # copy the output array back to the host system
@@ -228,20 +215,4 @@ def euclidean_map_gpu(f, g):
 
 
 def euclidean_reduce_gpu(v):
-    # move input data to the device
-    d_v = cuda.to_device(v)
-
-    # create output data on the device
-    out = np.zeros((v.shape[0], v.shape[0]))
-    d_out = cuda.to_device(out)
-
-    # we decide to use 32 blocks, each containing 128 threads
-    blocks_per_grid = (32, 32)
-    threads_per_block = (32, 32)
-    euclidean_reduce_kernal[blocks_per_grid, threads_per_block](d_v, d_out)
-    # wait for all threads to complete
-    cuda.synchronize()
-    # copy the output array back to the host system
-    # and print it
-    d_out_host = d_out.copy_to_host()
-    return d_out_host
+    return euclidean_reduce_cpu(v)

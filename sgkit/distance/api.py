@@ -61,6 +61,8 @@ def pairwise_distance(
 
         Omit to let dask heuristically decide a good default. A default can
         also be set globally with the split_every key in dask.config.
+    target
+        The architechture to run the calculation on, either of cpu or gpu
 
     Returns
     -------
