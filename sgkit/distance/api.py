@@ -110,7 +110,7 @@ def pairwise_distance(
     # graph serialisation/deserialisation time significantly
     metric_param = np.empty(n_map_param, dtype=x.dtype)
 
-    def _pairwise(f: ArrayLike, g: ArrayLike) -> ArrayLike:
+    def _pairwise_cpu(f: ArrayLike, g: ArrayLike) -> ArrayLike:
         result: ArrayLike = getattr(metrics, f"{metric}_map")(
             f[:, None, :], g, metric_param
         )
@@ -122,7 +122,7 @@ def pairwise_distance(
     # we perform blockwise without contraction followed by reduction.
     # More about this issue: https://github.com/dask/dask/issues/6874
     out = da.blockwise(
-        _pairwise,
+        _pairwise_cpu,
         "ijk",
         x,
         "ik",
