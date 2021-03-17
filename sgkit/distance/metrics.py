@@ -186,11 +186,16 @@ def _euclidean_distance(a, b):
 
 @cuda.jit
 def euclidean_map_kernel(x, y, out) -> None:
-    i1, i2 = cuda.grid(2)
-    if i1 >= x.shape[0] or i2 >= y.shape[0]:
+    i1, i2, i3 = cuda.grid(3)
+    if i1 >= x.shape[0] or i2 >= y.shape[0] or i3 >= x.shape[1]:
         # Quit if (x, y) is outside of valid output array boundary
         return
-    out[i1][i2] = _euclidean_distance(x[i1], y[i2])
+
+    # Ignore if missing values
+    if x[i1][i3] < 0 and y[i2][i3] < 0:
+        return
+
+    out[i1][i2] += (x[i1][i3] - y[i2][i3]) ** 2
 
 
 def euclidean_map_gpu(f, g):
@@ -203,8 +208,9 @@ def euclidean_map_gpu(f, g):
     d_out = cuda.to_device(out)
     #     d_out = cuda.device_array_like(d_a)
 
-    blocks_per_grid = (32, 32)
-    threads_per_block = (32, 32)
+    # we decide to use 32 blocks, each containing 128 threads
+    blocks_per_grid = (32, 32, 32)
+    threads_per_block = (32, 32, 32)
     euclidean_map_kernel[blocks_per_grid, threads_per_block](d_a, d_b, d_out)
     # wait for all threads to complete
     cuda.synchronize()
