@@ -84,9 +84,9 @@ def create_distance_matrix(
         ((100, 100), (25, 10), "cpu"),
         ((100, 100), (50, 10), "cpu"),
 
-        ((100, 100), (25, 10), "gpu"),
-        ((100, 100), (50, 10), "gpu"),
-        ((100, 100), (50, 10), "gpu"),
+        pytest.param((100, 100), (25, 10), "gpu", marks=pytest.mark.gpu),
+        pytest.param((100, 100), (50, 10), "gpu", marks=pytest.mark.gpu),
+        pytest.param((100, 100), (50, 10), "gpu", marks=pytest.mark.gpu),
     ],
 )
 def test_distance_correlation(
@@ -107,9 +107,9 @@ def test_distance_correlation(
         ((100, 100), (25, 10), "cpu"),
         ((100, 100), (50, 10), "cpu"),
 
-        ((100, 100), (25, 10), "gpu"),
-        ((100, 100), (50, 10), "gpu"),
-        ((100, 100), (50, 10), "gpu"),
+        pytest.param((100, 100), (25, 10), "gpu", marks=pytest.mark.gpu),
+        pytest.param((100, 100), (50, 10), "gpu", marks=pytest.mark.gpu),
+        pytest.param((100, 100), (50, 10), "gpu", marks=pytest.mark.gpu),
     ],
 )
 def test_distance_euclidean(
