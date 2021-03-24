@@ -186,19 +186,24 @@ def test_missing_values(
 
 
 @pytest.mark.parametrize(
-    "metric, dtype, expected",
+    "metric, dtype, expected, target",
     [
-        ("euclidean", "i8", "float64"),
-        ("euclidean", "f4", "float32"),
-        ("euclidean", "f8", "float64"),
-        ("correlation", "i8", "float64"),
-        ("correlation", "f4", "float32"),
-        ("correlation", "f8", "float64"),
+        ("euclidean", "i8", "float64", "cpu"),
+        ("euclidean", "f4", "float32", "cpu"),
+        ("euclidean", "f8", "float64", "cpu"),
+
+        pytest.param("euclidean", "i8", "float64", "gpu", marks=pytest.mark.gpu),
+        pytest.param("euclidean", "f4", "float32", "gpu", marks=pytest.mark.gpu),
+        pytest.param("euclidean", "f8", "float64", "gpu", marks=pytest.mark.gpu),
+
+        ("correlation", "i8", "float64", "cpu"),
+        ("correlation", "f4", "float32", "cpu"),
+        ("correlation", "f8", "float64", "cpu"),
     ],
 )
-def test_data_types(metric: MetricTypes, dtype: str, expected: str) -> None:
+def test_data_types(metric: MetricTypes, dtype: str, expected: str, target: TargetTypes) -> None:
     x = get_vectors(dtype=dtype)
-    distance_matrix = pairwise_distance(x, metric=metric).compute()
+    distance_matrix = pairwise_distance(x, metric=metric, target=target).compute()
     assert distance_matrix.dtype.name == expected
 
 
