@@ -151,18 +151,23 @@ def test_distance_ndarray() -> None:
 
 
 @pytest.mark.parametrize(
-    "metric, metric_func, dtype",
+    "metric, metric_func, dtype, target",
     [
-        ("euclidean", euclidean, "f8"),
-        ("euclidean", euclidean, "i8"),
-        ("correlation", correlation, "f8"),
-        ("correlation", correlation, "i8"),
+        ("euclidean", euclidean, "f8", 'cpu'),
+        ("euclidean", euclidean, "i8", 'cpu'),
+
+        pytest.param("euclidean", euclidean, "f8", 'gpu', marks=pytest.mark.gpu),
+        pytest.param("euclidean", euclidean, "i8", 'gpu', marks=pytest.mark.gpu),
+
+        ("correlation", correlation, "f8", 'cpu'),
+        ("correlation", correlation, "i8", 'cpu'),
     ],
 )
 def test_missing_values(
     metric: MetricTypes,
     metric_func: typing.Callable[[ArrayLike, ArrayLike], np.float64],
     dtype: str,
+    target: TargetTypes
 ) -> None:
     x = get_vectors(array_type="np", dtype=dtype)
 
@@ -175,7 +180,7 @@ def test_missing_values(
             -100, -1
         )
 
-    distance_matrix = pairwise_distance(x, metric=metric)
+    distance_matrix = pairwise_distance(x, metric=metric, target=target)
     expected_matrix = create_distance_matrix(x, metric_func)
     np.testing.assert_almost_equal(distance_matrix, expected_matrix)
 
