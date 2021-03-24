@@ -1,7 +1,8 @@
 import typing
 
 import dask.array as da
-import numpy as np
+import numpy
+import cupy
 
 from numba import cuda
 from numba.cuda import CudaSupportError
@@ -113,7 +114,18 @@ def pairwise_distance(
     except AttributeError:
         raise NotImplementedError(f"Given metric: '{metric}' is not implemented for '{target}'.")
 
-    x = da.asarray(x)
+    if target == "cpu":
+        array_backend = numpy
+    else:
+        array_backend = cupy
+
+    np = array_backend
+
+    if target == "cpu":
+        x = da.asarray(x)
+    else:
+        x = x.map_blocks(np.asarray)
+
     if x.ndim != 2:
         raise ValueError(f"2-dimensional array expected, got '{x.ndim}'")
 
@@ -131,8 +143,8 @@ def pairwise_distance(
         return result[..., np.newaxis]
 
     def _pairwise_gpu(f, g):
-        f.strides = (f.strides[-1] * f.shape[-1], f.strides[-1])
-        g.strides = (g.strides[-1] * g.shape[-1], g.strides[-1])
+        # f.strides = (f.strides[-1] * f.shape[-1], f.strides[-1])
+        # g.strides = (g.strides[-1] * g.shape[-1], g.strides[-1])
         f = np.ascontiguousarray(f)
         g = np.ascontiguousarray(g)
         result = getattr(metrics, map_func_name)(f, g)
