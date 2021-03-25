@@ -94,7 +94,7 @@ def test_distance_correlation(
 ) -> None:
     skip_gpu_tests_if_no_gpu(target)
     x = get_vectors(size=size, chunk=chunk)
-    distance_matrix = pairwise_distance(x, metric="correlation")
+    distance_matrix = pairwise_distance(x, metric="correlation", target=target)
     distance_array = pdist(x, metric="correlation")
     expected_matrix = squareform(distance_array)
     np.testing.assert_almost_equal(distance_matrix, expected_matrix)
