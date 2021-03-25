@@ -175,6 +175,26 @@ def correlation_reduce_cpu(v: ArrayLike, out: ArrayLike) -> None:  # pragma: no 
     out[0] = value
 
 
+def call_metric_kernel(f, g, metric, metric_kernel):
+    # move input data to the device
+    d_a = cuda.to_device(f)
+    d_b = cuda.to_device(g)
+    # create output data on the device
+    out = np.zeros((f.shape[0], g.shape[0], N_MAP_PARAM[metric]), dtype=f.dtype)
+    d_out = cuda.to_device(out)
+
+    threads_per_block = (32, 32)
+    blocks_per_grid = (
+        math.ceil(out.shape[0] / threads_per_block[0]),
+        math.ceil(out.shape[1] / threads_per_block[1])
+    )
+
+    metric_kernel[blocks_per_grid, threads_per_block](d_a, d_b, d_out)
+    # copy the output array back to the host system
+    d_out_host = d_out.copy_to_host()
+    return d_out_host
+
+
 @cuda.jit(device=True)
 def _correlation(x, y, out):
     m = x.shape[0]
@@ -186,6 +206,7 @@ def _correlation(x, y, out):
             out[3] += y[i] * y[i]
             out[4] += x[i] * y[i]
             out[5] += 1
+
 
 @cuda.jit
 def correlation_map_kernel(x, y, out) -> None:
@@ -221,26 +242,6 @@ def euclidean_map_kernel(x, y, out) -> None:
         # Quit if (x, y) is outside of valid output array boundary
         return
     _euclidean_distance(x[i1], y[i2], out[i1][i2])
-
-
-def call_metric_kernel(f, g, metric, metric_kernel):
-    # move input data to the device
-    d_a = cuda.to_device(f)
-    d_b = cuda.to_device(g)
-    # create output data on the device
-    out = np.zeros((f.shape[0], g.shape[0], N_MAP_PARAM[metric]), dtype=f.dtype)
-    d_out = cuda.to_device(out)
-
-    threads_per_block = (32, 32)
-    blocks_per_grid = (
-        math.ceil(out.shape[0] / threads_per_block[0]),
-        math.ceil(out.shape[1] / threads_per_block[1])
-    )
-
-    metric_kernel[blocks_per_grid, threads_per_block](d_a, d_b, d_out)
-    # copy the output array back to the host system
-    d_out_host = d_out.copy_to_host()
-    return d_out_host
 
 
 def euclidean_map_gpu(f, g):
