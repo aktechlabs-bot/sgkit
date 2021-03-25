@@ -176,15 +176,6 @@ def correlation_reduce_cpu(v: ArrayLike, out: ArrayLike) -> None:  # pragma: no 
 
 
 @cuda.jit(device=True)
-def _euclidean_distance(a, b):
-    square_sum = 0.0
-    for i in range(a.shape[0]):
-        if a[i] >= 0 and b[i] >= 0:
-            square_sum += (a[i] - b[i]) ** 2
-    return square_sum
-
-
-@cuda.jit(device=True)
 def _correlation(x, y, out):
     m = x.shape[0]
     for i in range(m):
@@ -211,7 +202,7 @@ def correlation_map_gpu(f, g):
     d_a = cuda.to_device(f)
     d_b = cuda.to_device(g)
     # create output data on the device
-    out = np.zeros((f.shape[0], g.shape[0], 6), dtype=np.float64)
+    out = np.zeros((f.shape[0], g.shape[0], N_MAP_PARAM['correlation']), dtype=np.float64)
     d_out = cuda.to_device(out)
 
     threads_per_block = (32, 32)
@@ -231,13 +222,22 @@ def correlation_reduce_gpu(v):
     return correlation_reduce_cpu(v)
 
 
+@cuda.jit(device=True)
+def _euclidean_distance(a, b, out):
+    square_sum = 0.0
+    for i in range(a.shape[0]):
+        if a[i] >= 0 and b[i] >= 0:
+            square_sum += (a[i] - b[i]) ** 2
+    out[0] = square_sum
+
+
 @cuda.jit
 def euclidean_map_kernel(x, y, out) -> None:
     i1, i2 = cuda.grid(2)
     if i1 >= out.shape[0] or i2 >= out.shape[1]:
         # Quit if (x, y) is outside of valid output array boundary
         return
-    out[i1][i2] = _euclidean_distance(x[i1], y[i2])
+    _euclidean_distance(x[i1], y[i2], out[i1][i2])
 
 
 def euclidean_map_gpu(f, g):
@@ -245,7 +245,7 @@ def euclidean_map_gpu(f, g):
     d_a = cuda.to_device(f)
     d_b = cuda.to_device(g)
     # create output data on the device
-    out = np.zeros((f.shape[0], g.shape[0]), dtype=f.dtype)
+    out = np.zeros((f.shape[0], g.shape[0], N_MAP_PARAM['euclidean']), dtype=f.dtype)
     d_out = cuda.to_device(out)
 
     threads_per_block = (32, 32)
