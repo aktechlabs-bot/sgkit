@@ -135,8 +135,6 @@ def pairwise_distance(
         f = np.ascontiguousarray(f)
         g = np.ascontiguousarray(g)
         result = getattr(metrics, map_func_name)(f, g)
-        if metric != "correlation":
-            result = result.reshape(result.shape[:-1] + (result.shape[-1], 1))
         return result[..., np.newaxis]
 
     pairwise_func = _pairwise_cpu
