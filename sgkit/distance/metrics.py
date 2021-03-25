@@ -202,7 +202,7 @@ def correlation_map_gpu(f, g):
     d_a = cuda.to_device(f)
     d_b = cuda.to_device(g)
     # create output data on the device
-    out = np.zeros((f.shape[0], g.shape[0], N_MAP_PARAM['correlation']), dtype=np.float64)
+    out = np.zeros((f.shape[0], g.shape[0], N_MAP_PARAM['correlation']), dtype=f.dtype)
     d_out = cuda.to_device(out)
 
     threads_per_block = (32, 32)

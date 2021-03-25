@@ -199,6 +199,11 @@ def test_missing_values(
         ("correlation", "i8", "float64", "cpu"),
         ("correlation", "f4", "float32", "cpu"),
         ("correlation", "f8", "float64", "cpu"),
+
+        pytest.param("correlation", "i8", "float64", "gpu", marks=pytest.mark.gpu),
+        pytest.param("correlation", "f4", "float32", "gpu", marks=pytest.mark.gpu),
+        pytest.param("correlation", "f8", "float64", "gpu", marks=pytest.mark.gpu),
+
     ],
 )
 def test_data_types(metric: MetricTypes, dtype: str, expected: str, target: TargetTypes) -> None:
