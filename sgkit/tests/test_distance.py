@@ -172,6 +172,7 @@ def test_missing_values(
     dtype: str,
     target: TargetTypes
 ) -> None:
+    skip_gpu_tests_if_no_gpu(target)
     x = get_vectors(array_type="np", dtype=dtype)
 
     ri_times = np.random.randint(5, 20)
@@ -210,6 +211,7 @@ def test_missing_values(
     ],
 )
 def test_data_types(metric: MetricTypes, dtype: str, expected: str, target: TargetTypes) -> None:
+    skip_gpu_tests_if_no_gpu(target)
     x = get_vectors(dtype=dtype)
     distance_matrix = pairwise_distance(x, metric=metric, target=target).compute()
     assert distance_matrix.dtype.name == expected
