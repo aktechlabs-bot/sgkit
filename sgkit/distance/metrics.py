@@ -176,6 +176,12 @@ def correlation_reduce_cpu(v: ArrayLike, out: ArrayLike) -> None:  # pragma: no 
 
 
 def call_metric_kernel(f, g, metric, metric_kernel):
+    # Numba's 0.54.0 version is required, which is not released yet
+    # We install numba from numba conda channel: conda install -c numba/label/dev numba
+    # Relevant issue https://github.com/numba/numba/issues/6824
+    f = np.ascontiguousarray(f)
+    g = np.ascontiguousarray(g)
+
     # move input data to the device
     d_a = cuda.to_device(f)
     d_b = cuda.to_device(g)
