@@ -198,24 +198,7 @@ def correlation_map_kernel(x, y, out) -> None:
 
 
 def correlation_map_gpu(f, g):
-    # move input data to the device
-    d_a = cuda.to_device(f)
-    d_b = cuda.to_device(g)
-    # create output data on the device
-    out = np.zeros((f.shape[0], g.shape[0], N_MAP_PARAM['correlation']), dtype=f.dtype)
-    d_out = cuda.to_device(out)
-
-    threads_per_block = (32, 32)
-    blocks_per_grid = (
-        math.ceil(out.shape[0] / threads_per_block[0]),
-        math.ceil(out.shape[1] / threads_per_block[1])
-    )
-
-    correlation_map_kernel[blocks_per_grid, threads_per_block](d_a, d_b, d_out)
-    # copy the output array back to the host system
-    # and print it
-    d_out_host = d_out.copy_to_host()
-    return d_out_host
+    return call_metric_kernel(f, g, 'correlation', correlation_map_kernel)
 
 
 def correlation_reduce_gpu(v):
@@ -240,12 +223,12 @@ def euclidean_map_kernel(x, y, out) -> None:
     _euclidean_distance(x[i1], y[i2], out[i1][i2])
 
 
-def euclidean_map_gpu(f, g):
+def call_metric_kernel(f, g, metric, metric_kernel):
     # move input data to the device
     d_a = cuda.to_device(f)
     d_b = cuda.to_device(g)
     # create output data on the device
-    out = np.zeros((f.shape[0], g.shape[0], N_MAP_PARAM['euclidean']), dtype=f.dtype)
+    out = np.zeros((f.shape[0], g.shape[0], N_MAP_PARAM[metric]), dtype=f.dtype)
     d_out = cuda.to_device(out)
 
     threads_per_block = (32, 32)
@@ -254,11 +237,14 @@ def euclidean_map_gpu(f, g):
         math.ceil(out.shape[1] / threads_per_block[1])
     )
 
-    euclidean_map_kernel[blocks_per_grid, threads_per_block](d_a, d_b, d_out)
+    metric_kernel[blocks_per_grid, threads_per_block](d_a, d_b, d_out)
     # copy the output array back to the host system
-    # and print it
     d_out_host = d_out.copy_to_host()
     return d_out_host
+
+
+def euclidean_map_gpu(f, g):
+    return call_metric_kernel(f, g, 'euclidean', euclidean_map_kernel)
 
 
 def euclidean_reduce_gpu(v):
