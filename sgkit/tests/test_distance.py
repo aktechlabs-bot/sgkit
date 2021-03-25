@@ -161,6 +161,9 @@ def test_distance_ndarray() -> None:
 
         ("correlation", correlation, "f8", 'cpu'),
         ("correlation", correlation, "i8", 'cpu'),
+
+        pytest.param("correlation", correlation, "f8", 'gpu', marks=pytest.mark.gpu),
+        pytest.param("correlation", correlation, "i8", 'gpu', marks=pytest.mark.gpu),
     ],
 )
 def test_missing_values(
