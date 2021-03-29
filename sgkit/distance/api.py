@@ -2,6 +2,7 @@ import typing
 
 import dask.array as da
 import numpy as np
+import cupy as cp
 
 from typing_extensions import Literal
 
@@ -112,6 +113,12 @@ def pairwise_distance(
         raise NotImplementedError(f"Given metric: '{metric}' is not implemented for '{target}'.")
 
     x = da.asarray(x)
+    if target == "cpu":
+        array_backend = np
+    else:
+        x = x.map_blocks(cp.asarray)
+        array_backend = cp
+
     if x.ndim != 2:
         raise ValueError(f"2-dimensional array expected, got '{x.ndim}'")
 
@@ -130,7 +137,7 @@ def pairwise_distance(
 
     def _pairwise_gpu(f, g):
         result = getattr(metrics, map_func_name)(f, g)
-        return result[..., np.newaxis]
+        return result[..., cp.newaxis]
 
     pairwise_func = _pairwise_cpu
     if target == "gpu":
@@ -168,7 +175,7 @@ def pairwise_distance(
         not be invoked at all."""
         # reduce chunks by summing along the -2 axis
         x_chunk_reshaped = x_chunk.reshape(x_chunk.shape[:-2] + (-1, n_map_param))
-        return x_chunk_reshaped.sum(axis=-2)[..., np.newaxis]
+        return x_chunk_reshaped.sum(axis=-2)[..., array_backend.newaxis]
 
     r = da.reduction(
         out,
@@ -177,10 +184,13 @@ def pairwise_distance(
         aggregate=_aggregate,
         axis=-1,
         dtype=x.dtype,
-        meta=np.ndarray((0, 0), dtype=x.dtype),
+        meta=array_backend.ndarray((0, 0), dtype=x.dtype),
         split_every=split_every,
         name="pairwise",
     )
 
     t = da.triu(r)
-    return t + t.T
+    distance = t + t.T
+    if target == "gpu":
+        distance = x.map_blocks(cp.asnumpy)
+    return distance

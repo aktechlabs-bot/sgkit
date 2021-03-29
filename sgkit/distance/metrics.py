@@ -180,12 +180,12 @@ def call_metric_kernel(f, g, metric, metric_kernel):
     # Numba's 0.54.0 version is required, which is not released yet
     # We install numba from numba conda channel: conda install -c numba/label/dev numba
     # Relevant issue https://github.com/numba/numba/issues/6824
-    f = np.ascontiguousarray(f)
-    g = np.ascontiguousarray(g)
+    # f = np.ascontiguousarray(f)
+    # g = np.ascontiguousarray(g)
 
     # move input data to the device
-    d_a = cuda.to_device(f)
-    d_b = cuda.to_device(g)
+    d_a = f
+    d_b = f
     # create output data on the device
     out = cp.zeros((f.shape[0], g.shape[0], N_MAP_PARAM[metric]), dtype=f.dtype)
     d_out = out
@@ -198,7 +198,8 @@ def call_metric_kernel(f, g, metric, metric_kernel):
 
     metric_kernel[blocks_per_grid, threads_per_block](d_a, d_b, d_out)
     # copy the output array back to the host system
-    d_out_host = cp.asnumpy(d_out)
+    # d_out_host = cp.asnumpy(d_out)
+    d_out_host = d_out
     return d_out_host
 
 
