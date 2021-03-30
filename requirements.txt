@@ -8,3 +8,4 @@ typing-extensions
 numba
 zarr
 fsspec
+cupy
