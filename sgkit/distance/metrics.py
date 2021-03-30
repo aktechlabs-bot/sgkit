@@ -211,14 +211,30 @@ def call_metric_kernel(
 @cuda.jit(device=True)  # type: ignore
 def _correlation(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:
     m = x.shape[0]
+    # Note: assigning variable and only saving the final value in the
+    # array made this significantly faster.
+    v0 = 0.0
+    v1 = 0.0
+    v2 = 0.0
+    v3 = 0.0
+    v4 = 0.0
+    v5 = 0.0
+
     for i in range(m):
         if x[i] >= 0 and y[i] >= 0:
-            out[0] += x[i]
-            out[1] += y[i]
-            out[2] += x[i] * x[i]
-            out[3] += y[i] * y[i]
-            out[4] += x[i] * y[i]
-            out[5] += 1
+            v0 += x[i]
+            v1 += y[i]
+            v2 += x[i] * x[i]
+            v3 += y[i] * y[i]
+            v4 += x[i] * y[i]
+            v5 += 1
+
+    out[0] = v0
+    out[1] = v1
+    out[2] = v2
+    out[3] = v3
+    out[4] = v4
+    out[5] = v5
 
 
 @cuda.jit  # type: ignore
