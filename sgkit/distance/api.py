@@ -2,7 +2,6 @@ import typing
 
 import dask.array as da
 import numpy as np
-
 from typing_extensions import Literal
 
 from sgkit.distance import metrics
@@ -16,7 +15,7 @@ def pairwise_distance(
     x: ArrayLike,
     metric: MetricTypes = "euclidean",
     split_every: typing.Optional[int] = None,
-    target: TargetTypes = "cpu"
+    target: TargetTypes = "cpu",
 ) -> da.array:
     """Calculates the pairwise distance between all pairs of row vectors in the
     given two dimensional array x.
@@ -99,9 +98,11 @@ def pairwise_distance(
            [ 2.62956526e-01,  0.00000000e+00,  2.14285714e-01],
            [ 2.82353505e-03,  2.14285714e-01,  0.00000000e+00]])
     """
-    valid_targets = {'cpu', 'gpu'}
+    valid_targets = {"cpu", "gpu"}
     if target not in valid_targets:
-        raise ValueError(f"Invalid Target, expected one of {valid_targets}, got: {target}")
+        raise ValueError(
+            f"Invalid Target, expected one of {valid_targets}, got: {target}"
+        )
     try:
         map_func_name = f"{metric}_map_{target}"
         reduce_func_name = f"{metric}_reduce_{target}"
@@ -109,7 +110,9 @@ def pairwise_distance(
         getattr(metrics, reduce_func_name)
         n_map_param = metrics.N_MAP_PARAM[metric]
     except AttributeError:
-        raise NotImplementedError(f"Given metric: '{metric}' is not implemented for '{target}'.")
+        raise NotImplementedError(
+            f"Given metric: '{metric}' is not implemented for '{target}'."
+        )
 
     x = da.asarray(x)
     if x.ndim != 2:
@@ -128,7 +131,7 @@ def pairwise_distance(
         # reduction step (see the _aggregate and _combine functions below).
         return result[..., np.newaxis]
 
-    def _pairwise_gpu(f, g):
+    def _pairwise_gpu(f: ArrayLike, g: ArrayLike) -> ArrayLike:
         result = getattr(metrics, map_func_name)(f, g)
         return result[..., np.newaxis]
 
