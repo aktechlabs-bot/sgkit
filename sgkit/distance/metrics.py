@@ -190,7 +190,7 @@ def call_metric_kernel(
     d_a = cuda.to_device(f)
     d_b = cuda.to_device(g)
     # create output data on the device
-    out = np.zeros((f.shape[0], g.shape[0], N_MAP_PARAM[metric]))
+    out = np.zeros((f.shape[0], g.shape[0], N_MAP_PARAM[metric]), dtype=f.dtype)
     d_out = cuda.to_device(out)
 
     # TODO: Consider using cupy for directly creating zeros on GPU
