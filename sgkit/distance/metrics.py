@@ -8,7 +8,6 @@ dictionary below.
 import math
 from typing import Any
 
-import cupy as cp  # type: ignore
 import numpy as np
 from numba import cuda, guvectorize
 
@@ -191,8 +190,11 @@ def call_metric_kernel(
     d_a = cuda.to_device(f)
     d_b = cuda.to_device(g)
     # create output data on the device
-    out = cp.zeros((f.shape[0], g.shape[0], N_MAP_PARAM[metric]), dtype=f.dtype)
-    d_out = out
+    out = np.zeros((f.shape[0], g.shape[0], N_MAP_PARAM[metric]))
+    d_out = cuda.to_device(out)
+
+    # TODO: Consider using cupy for directly creating zeros on GPU
+    # d_out = cp.zeros((f.shape[0], g.shape[0], N_MAP_PARAM[metric]), dtype=f.dtype)
 
     threads_per_block = (32, 32)
     blocks_per_grid = (
@@ -202,7 +204,7 @@ def call_metric_kernel(
 
     metric_kernel[blocks_per_grid, threads_per_block](d_a, d_b, d_out)
     # copy the output array back to the host system
-    d_out_host = cp.asnumpy(d_out)
+    d_out_host = d_out.copy_to_host()
     return d_out_host
 
 
