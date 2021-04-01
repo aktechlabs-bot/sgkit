@@ -257,15 +257,15 @@ def correlation_map_kernel(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:
     _correlation(x[i1], y[i2], out[i1][i2])
 
 
-def correlation_map_gpu(f: ArrayLike, g: ArrayLike) -> ArrayLike:
+def correlation_map_gpu(x: ArrayLike, y: ArrayLike) -> ArrayLike:
     """Pearson correlation "map" function for partial vector pairs on GPU
 
     Parameters
     ----------
-    f
-        An array chunk, a partial vector
-    g
-        Another array chunk, a partial vector
+    x
+        [array-like, shape: (m, n)]
+    y
+        [array-like, shape: (p, n)]
 
     Returns
     -------
@@ -273,15 +273,48 @@ def correlation_map_gpu(f: ArrayLike, g: ArrayLike) -> ArrayLike:
     of pearson correlation on the given pair of chunks, without the aggregation.
     """
 
-    return call_metric_kernel(f, g, "correlation", correlation_map_kernel)
+    return call_metric_kernel(x, y, "correlation", correlation_map_kernel)
 
 
 def correlation_reduce_gpu(v: ArrayLike) -> None:
+    """GPU implementation of the corresponding "reduce" function for pearson
+    correlation.
+
+    Parameters
+    ----------
+    v
+        [array-like, shape: (1, n)]
+        The correlation array on which map step pearson corrections has been
+        applied.
+
+    Returns
+    -------
+    An ndarray, which contains the result of the calculation of the reduction step
+    of correlation metric.
+    """
     return correlation_reduce_cpu(v)  # type: ignore
 
 
 @cuda.jit(device=True)  # type: ignore
-def _euclidean_distance(a: ArrayLike, b: ArrayLike, out: ArrayLike) -> None:
+def _euclidean_distance_map(a: ArrayLike, b: ArrayLike, out: ArrayLike) -> None:
+    """Helper function for the map step of euclidean distance which runs on
+    the device (GPU) itself.
+
+    Parameters
+    ----------
+    a
+        [array-like, shape: (1, n)]
+    b
+        [array-like, shape: (1, n)]
+    out
+        [array-like, shape: (1)]
+        The output array for returning the result.
+
+    Returns
+    -------
+    An ndarray, which contains the squared sum of the corresponding elements
+    of the given pair of vectors.
+    """
     square_sum = types.float32(0)
 
     zero = types.uint32(0)
@@ -297,6 +330,26 @@ def _euclidean_distance(a: ArrayLike, b: ArrayLike, out: ArrayLike) -> None:
 
 @cuda.jit  # type: ignore
 def euclidean_map_kernel(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:
+    """Euclidean map CUDA kernel.
+
+    Parameters
+    ----------
+    x
+        [array-like, shape: (m, n)]
+    y
+        [array-like, shape: (p, n)]
+    out
+        [array-like, shape: (m, p, 1)]
+        The zeros array of shape (m, p, 1) for returning the result.
+
+    Returns
+    -------
+    An ndarray, which contains the output of the calculation of the application
+    of euclidean distance on all pairs of vectors from x and y arrays.
+    """
+    # Aggresive typecasting of all the variables is done to improve performance.
+
+    # Unique index of the thread in the whole grid.
     i1 = types.uint32(cuda.grid(2)[types.uint32(0)])
     i2 = types.uint32(cuda.grid(2)[types.uint32(1)])
 
@@ -305,13 +358,43 @@ def euclidean_map_kernel(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:
 
     if i1 >= out_shape_0 or i2 >= out_shape_1:
         # Quit if (x, y) is outside of valid output array boundary
+        # This is required because we may spin up more threads than we need.
         return
-    _euclidean_distance(x[i1], y[i2], out[i1][i2])
+    _euclidean_distance_map(x[i1], y[i2], out[i1][i2])
 
 
-def euclidean_map_gpu(f: ArrayLike, g: ArrayLike) -> ArrayLike:
-    return call_metric_kernel(f, g, "euclidean", euclidean_map_kernel)
+def euclidean_map_gpu(x: ArrayLike, y: ArrayLike) -> ArrayLike:
+    """GPU implementation of Euclidean distance "map" function for partial
+    vector pairs. This runs on GPU by using the euclidean_map_kernel cuda kernel.
+
+    Parameters
+    ----------
+    x
+        [array-like, shape: (m, n)]
+    y
+        [array-like, shape: (p, n)]
+
+    Returns
+    -------
+    An ndarray, which contains the output of the calculation of the application
+    of euclidean distance on the given pair of chunks, without the aggregation.
+    """
+    return call_metric_kernel(x, y, "euclidean", euclidean_map_kernel)
 
 
 def euclidean_reduce_gpu(v: ArrayLike) -> ArrayLike:
+    """GPU Implementation of the Corresponding "reduce" function for euclidean
+    distance.
+
+    Parameters
+    ----------
+    v
+        The euclidean array on which map step of euclidean distance has been
+        applied.
+
+    Returns
+    -------
+    An ndarray, which contains square root of the sum of the squared sums obtained from
+    the map step of `euclidean_map`.
+    """
     return euclidean_reduce_cpu(v)
