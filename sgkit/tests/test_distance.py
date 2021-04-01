@@ -83,7 +83,7 @@ def create_distance_matrix(
         ((100, 100), (25, 10), "cpu"),
         ((100, 100), (50, 10), "cpu"),
         pytest.param((100, 100), (25, 10), "gpu", marks=pytest.mark.gpu),
-        pytest.param((100, 100), (50, 10), "gpu", marks=pytest.mark.gpu),
+        pytest.param((100, 100), (20, 10), "gpu", marks=pytest.mark.gpu),
         pytest.param((100, 100), (50, 10), "gpu", marks=pytest.mark.gpu),
     ],
 )
