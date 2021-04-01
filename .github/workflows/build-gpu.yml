@@ -6,8 +6,7 @@ on:
 
 jobs:
   build:
-    # Scheduled runs only on the origin org
-    if: (github.event_name == 'schedule' && github.repository_owner == 'pystatgen') || (github.event_name != 'schedule')
+
     runs-on: self-hosted
     strategy:
       matrix:
