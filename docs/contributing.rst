@@ -96,8 +96,8 @@ You can install the necessary requirements using pip::
 
 If you have a Nvidia GPU you will need to make sure that it is configured properly,
 as in you have cudatoolkit installed, the instructions for the same can be found on
-`nvidia docs<https://developer.nvidia.com/cuda-toolkit>`_ to be able to use and develop
-GPU based functionality in sgkit.
+`nvidia docs. <https://developer.nvidia.com/cuda-toolkit>`_
+
 
 Also install pre-commit, which is used to enforce coding standards::
 
