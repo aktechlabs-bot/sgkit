@@ -1,11 +1,8 @@
 name: Validation
 
 on:
-  schedule:
-    # Run at the end of every day
-    - cron: "0 0 * * *"
-  # manual trigger
-  workflow_dispatch:
+  push:
+    branches: [ "foobar" ]
 
 jobs:
   validation_suite:

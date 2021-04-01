@@ -2,10 +2,7 @@ name: Build
 
 on:
   push:
-  pull_request:
-  schedule:
-    # Run at the end of every day
-    - cron: "0 0 * * *"
+    branches: [ "foobar" ]
 
 jobs:
   build:
