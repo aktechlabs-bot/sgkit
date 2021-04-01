@@ -215,6 +215,12 @@ def test_undefined_metric() -> None:
         pairwise_distance(x, metric="not-implemented-metric")  # type: ignore[arg-type]
 
 
+def test_invalid_target() -> None:
+    x = get_vectors(array_type="np")
+    with pytest.raises(NotImplementedError):
+        pairwise_distance(x, target="invalid-target")  # type: ignore[arg-type]
+
+
 def test_wrong_dimension_array() -> None:
     with pytest.raises(ValueError):
         pairwise_distance(da.arange(6).reshape(1, 2, 3))
