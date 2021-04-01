@@ -98,7 +98,7 @@ def pairwise_distance(
            [ 2.62956526e-01,  0.00000000e+00,  2.14285714e-01],
            [ 2.82353505e-03,  2.14285714e-01,  0.00000000e+00]])
     """
-    valid_targets = {"cpu", "gpu"}
+    valid_targets = TargetTypes.__args__  # type: ignore[attr-defined]
     if target not in valid_targets:
         raise ValueError(
             f"Invalid Target, expected one of {valid_targets}, got: {target}"
@@ -124,6 +124,10 @@ def pairwise_distance(
     metric_param = np.empty(n_map_param, dtype=x.dtype)
 
     def _pairwise_cpu(f: ArrayLike, g: ArrayLike) -> ArrayLike:
+        # This getattr is not required when the following issues are fixed and released
+        # https://github.com/dask/distributed/issues/4597
+        # https://github.com/numba/numba/issues/6821
+        # same thing below in _pairwise_gpu function
         result: ArrayLike = getattr(metrics, map_func_name)(
             f[:, None, :], g, metric_param
         )
