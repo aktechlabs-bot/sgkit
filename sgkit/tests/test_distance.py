@@ -217,7 +217,7 @@ def test_undefined_metric() -> None:
 
 def test_invalid_target() -> None:
     x = get_vectors(array_type="np")
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ValueError):
         pairwise_distance(x, target="invalid-target")  # type: ignore[arg-type]
 
 
