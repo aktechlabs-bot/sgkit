@@ -179,7 +179,7 @@ def correlation_reduce_cpu(v: ArrayLike, out: ArrayLike) -> None:  # pragma: no 
 
 def call_metric_kernel(
     f: ArrayLike, g: ArrayLike, metric: str, metric_kernel: Any
-) -> ArrayLike:
+) -> ArrayLike:  # pragma: no cover.
     # Numba's 0.54.0 version is required, which is not released yet
     # We install numba from numba conda channel: conda install -c numba/label/dev numba
     # Relevant issue https://github.com/numba/numba/issues/6824
@@ -209,7 +209,9 @@ def call_metric_kernel(
 
 
 @cuda.jit(device=True)  # type: ignore
-def _correlation(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:
+def _correlation(
+    x: ArrayLike, y: ArrayLike, out: ArrayLike
+) -> None:  # pragma: no cover.
     # Note: assigning variable and only saving the final value in the
     # array made this significantly faster.
     v0 = types.float32(0)
@@ -243,7 +245,9 @@ def _correlation(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:
 
 
 @cuda.jit  # type: ignore
-def correlation_map_kernel(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:
+def correlation_map_kernel(
+    x: ArrayLike, y: ArrayLike, out: ArrayLike
+) -> None:  # pragma: no cover.
     i1 = types.uint32(cuda.grid(2)[types.uint32(0)])
     i2 = types.uint32(cuda.grid(2)[types.uint32(1)])
 
@@ -257,7 +261,7 @@ def correlation_map_kernel(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:
     _correlation(x[i1], y[i2], out[i1][i2])
 
 
-def correlation_map_gpu(x: ArrayLike, y: ArrayLike) -> ArrayLike:
+def correlation_map_gpu(x: ArrayLike, y: ArrayLike) -> ArrayLike:  # pragma: no cover.
     """Pearson correlation "map" function for partial vector pairs on GPU
 
     Parameters
@@ -276,7 +280,7 @@ def correlation_map_gpu(x: ArrayLike, y: ArrayLike) -> ArrayLike:
     return call_metric_kernel(x, y, "correlation", correlation_map_kernel)
 
 
-def correlation_reduce_gpu(v: ArrayLike) -> None:
+def correlation_reduce_gpu(v: ArrayLike) -> None:  # pragma: no cover.
     """GPU implementation of the corresponding "reduce" function for pearson
     correlation.
 
@@ -296,7 +300,9 @@ def correlation_reduce_gpu(v: ArrayLike) -> None:
 
 
 @cuda.jit(device=True)  # type: ignore
-def _euclidean_distance_map(a: ArrayLike, b: ArrayLike, out: ArrayLike) -> None:
+def _euclidean_distance_map(
+    a: ArrayLike, b: ArrayLike, out: ArrayLike
+) -> None:  # pragma: no cover.
     """Helper function for the map step of euclidean distance which runs on
     the device (GPU) itself.
 
@@ -329,7 +335,9 @@ def _euclidean_distance_map(a: ArrayLike, b: ArrayLike, out: ArrayLike) -> None:
 
 
 @cuda.jit  # type: ignore
-def euclidean_map_kernel(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:
+def euclidean_map_kernel(
+    x: ArrayLike, y: ArrayLike, out: ArrayLike
+) -> None:  # pragma: no cover.
     """Euclidean map CUDA kernel.
 
     Parameters
@@ -363,7 +371,7 @@ def euclidean_map_kernel(x: ArrayLike, y: ArrayLike, out: ArrayLike) -> None:
     _euclidean_distance_map(x[i1], y[i2], out[i1][i2])
 
 
-def euclidean_map_gpu(x: ArrayLike, y: ArrayLike) -> ArrayLike:
+def euclidean_map_gpu(x: ArrayLike, y: ArrayLike) -> ArrayLike:  # pragma: no cover.
     """GPU implementation of Euclidean distance "map" function for partial
     vector pairs. This runs on GPU by using the euclidean_map_kernel cuda kernel.
 
@@ -382,7 +390,7 @@ def euclidean_map_gpu(x: ArrayLike, y: ArrayLike) -> ArrayLike:
     return call_metric_kernel(x, y, "euclidean", euclidean_map_kernel)
 
 
-def euclidean_reduce_gpu(v: ArrayLike) -> ArrayLike:
+def euclidean_reduce_gpu(v: ArrayLike) -> ArrayLike:  # pragma: no cover.
     """GPU Implementation of the Corresponding "reduce" function for euclidean
     distance.
 
