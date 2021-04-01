@@ -135,13 +135,13 @@ def pairwise_distance(
         # reduction step (see the _aggregate and _combine functions below).
         return result[..., np.newaxis]
 
-    def _pairwise_gpu(f: ArrayLike, g: ArrayLike) -> ArrayLike:
+    def _pairwise_gpu(f: ArrayLike, g: ArrayLike) -> ArrayLike:  # pragma: no cover
         result = getattr(metrics, map_func_name)(f, g)
         return result[..., np.newaxis]
 
     pairwise_func = _pairwise_cpu
     if target == "gpu":
-        pairwise_func = _pairwise_gpu
+        pairwise_func = _pairwise_gpu  # pragma: no cover
 
     # concatenate in blockwise leads to high memory footprints, so instead
     # we perform blockwise without contraction followed by reduction.
