@@ -106,8 +106,8 @@ def pairwise_distance(
     try:
         map_func_name = f"{metric}_map_{target}"
         reduce_func_name = f"{metric}_reduce_{target}"
-        getattr(metrics, map_func_name)
-        getattr(metrics, reduce_func_name)
+        map_func = getattr(metrics, map_func_name)
+        reduce_func = getattr(metrics, reduce_func_name)
         n_map_param = metrics.N_MAP_PARAM[metric]
     except AttributeError:
         raise NotImplementedError(
@@ -128,15 +128,13 @@ def pairwise_distance(
         # https://github.com/dask/distributed/issues/4597
         # https://github.com/numba/numba/issues/6821
         # same thing below in _pairwise_gpu function
-        result: ArrayLike = getattr(metrics, map_func_name)(
-            f[:, None, :], g, metric_param
-        )
+        result: ArrayLike = map_func(f[:, None, :], g, metric_param)
         # Adding a new axis to help combine chunks along this axis in the
         # reduction step (see the _aggregate and _combine functions below).
         return result[..., np.newaxis]
 
     def _pairwise_gpu(f: ArrayLike, g: ArrayLike) -> ArrayLike:  # pragma: no cover
-        result = getattr(metrics, map_func_name)(f, g)
+        result = map_func(f, g)
         return result[..., np.newaxis]
 
     pairwise_func = _pairwise_cpu
@@ -162,7 +160,7 @@ def pairwise_distance(
         producing the final output. It is always invoked, even when the reduced
         Array counts a single chunk along the reduced axes."""
         x_chunk = x_chunk.reshape(x_chunk.shape[:-2] + (-1, n_map_param))
-        result: ArrayLike = getattr(metrics, reduce_func_name)(x_chunk)
+        result: ArrayLike = reduce_func(x_chunk)
         return result
 
     def _chunk(x_chunk: ArrayLike, **_: typing.Any) -> ArrayLike:
