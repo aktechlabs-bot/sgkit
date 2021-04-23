@@ -176,16 +176,9 @@ def test_missing_values(
     device: DeviceTypes,
 ) -> None:
     skip_gpu_tests_if_no_gpu(device)
-    x = get_vectors(array_type="np", dtype=dtype)
-
-    ri_times = np.random.randint(5, 20)
-    m, n = x.shape
-    for i in range(ri_times):
-        if dtype == "f8":
-            x[np.random.randint(0, m)][np.random.randint(0, m)] = np.nan
-        x[np.random.randint(0, m)][np.random.randint(0, m)] = np.random.randint(
-            -100, -1
-        )
+    x = np.random.choice(range(-3, 3), size=(30, 30))
+    if np.issubdtype(dtype, np.floating):
+        x = np.where(x < 0, np.nan, x)
 
     distance_matrix = pairwise_distance(x, metric=metric, device=device)
     expected_matrix = create_distance_matrix(x, metric_func)
