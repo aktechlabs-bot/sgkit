@@ -154,7 +154,17 @@ def pairwise_distance(
     def _aggregate(x_chunk: ArrayLike, **_: typing.Any) -> ArrayLike:
         """Last function to be executed when resolving the dask graph,
         producing the final output. It is always invoked, even when the reduced
-        Array counts a single chunk along the reduced axes."""
+        Array counts a single chunk along the reduced axes.
+
+        Parameters
+        ----------
+        x
+            [array-like, shape: (M, M, N, 1)]
+            An array like two dimensional matrix. The dimension is as follows:
+            M is the chunk size on axis=0 for `x` (input for `pairwise_distance`
+            function).
+            N: is the number of chunks along axis=1
+        """
         x_chunk = x_chunk.reshape(x_chunk.shape[:-2] + (-1, n_map_param))
         result: ArrayLike = reduce_func(x_chunk)
         return result
