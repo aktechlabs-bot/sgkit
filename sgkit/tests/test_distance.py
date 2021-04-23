@@ -33,12 +33,9 @@ def get_vectors(
     size: typing.Tuple[int, int] = (100, 100),
     chunk: typing.Tuple[int, int] = (20, 10),
 ) -> ArrayLike:
-    if array_type == "da":
-        rs = da.random.RandomState(0)
-        x = rs.randint(0, 3, size=size).astype(dtype).rechunk(chunk)
-    else:
-        x = np.random.rand(size[0], size[1]).astype(dtype)
-    return x
+    rs = da.random.RandomState(0)
+    x = rs.randint(0, 3, size=size, chunks=chunk).astype(dtype)
+    return x if array_type == "da" else np.asarray(x)
 
 
 def create_distance_matrix(
