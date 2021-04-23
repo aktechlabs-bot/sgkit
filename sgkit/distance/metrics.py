@@ -193,9 +193,6 @@ def call_metric_kernel(
     out = np.zeros((f.shape[0], g.shape[0], N_MAP_PARAM[metric]), dtype=f.dtype)
     d_out = cuda.to_device(out)
 
-    # TODO: Consider using cupy for directly creating zeros on GPU
-    # d_out = cp.zeros((f.shape[0], g.shape[0], N_MAP_PARAM[metric]), dtype=f.dtype)
-
     threads_per_block = (32, 32)
     blocks_per_grid = (
         math.ceil(out.shape[0] / threads_per_block[0]),
