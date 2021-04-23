@@ -9,8 +9,6 @@ on:
 
 jobs:
   win_build:
-    # Scheduled runs only on the origin org
-    if: (github.event_name == 'schedule' && github.repository_owner == 'pystatgen') || (github.event_name != 'schedule')
     runs-on: windows-latest
     strategy:
       matrix:
@@ -36,4 +34,4 @@ jobs:
       # activate conda
       shell: bash -l {0}
       run: |
-        pytest -v
+        pytest sgkit/tests/test_distance.py -v
