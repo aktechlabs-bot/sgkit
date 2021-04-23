@@ -14,27 +14,6 @@ from scipy.spatial.distance import (  # type: ignore
 from sgkit.distance.api import DeviceTypes, MetricTypes, pairwise_distance
 from sgkit.typing import ArrayLike
 
-METRIC_TEST_PARAMS = [
-    ((30, 30), (10, 10), "cpu"),
-    ((30, 30), (10, 5), "cpu"),
-    ((30, 30), (5, 10), "cpu"),
-    ((15, 30), (10, 10), "cpu"),
-    ((15, 30), (10, 5), "cpu"),
-    ((15, 30), (5, 10), "cpu"),
-    ((30, 15), (10, 10), "cpu"),
-    ((30, 15), (10, 5), "cpu"),
-    ((30, 15), (5, 10), "cpu"),
-    pytest.param((30, 30), (10, 10), "gpu", marks=pytest.mark.gpu),
-    pytest.param((30, 30), (10, 5), "gpu", marks=pytest.mark.gpu),
-    pytest.param((30, 30), (5, 10), "gpu", marks=pytest.mark.gpu),
-    pytest.param((15, 30), (10, 10), "gpu", marks=pytest.mark.gpu),
-    pytest.param((15, 30), (10, 5), "gpu", marks=pytest.mark.gpu),
-    pytest.param((15, 30), (5, 10), "gpu", marks=pytest.mark.gpu),
-    pytest.param((30, 15), (10, 10), "gpu", marks=pytest.mark.gpu),
-    pytest.param((30, 15), (10, 5), "gpu", marks=pytest.mark.gpu),
-    pytest.param((30, 15), (5, 10), "gpu", marks=pytest.mark.gpu),
-]
-
 
 def detect_cuda_driver() -> bool:
     try:
@@ -97,26 +76,33 @@ def create_distance_matrix(
     return distance_matrix
 
 
-@pytest.mark.parametrize("size, chunk, device", METRIC_TEST_PARAMS)
-def test_distance_correlation(
-    size: typing.Tuple[int, int], chunk: typing.Tuple[int, int], device: DeviceTypes
+@pytest.mark.parametrize(
+    "size, chunk, device, metric",
+    [
+        pytest.param(
+            shape,
+            chunks,
+            device,
+            metric,
+            marks=pytest.mark.gpu if device == "gpu" else "",
+        )
+        for shape in [(30, 30), (15, 30), (30, 15)]
+        for chunks in [(10, 10), (5, 10), (10, 5)]
+        for device in ["cpu", "gpu"]
+        for metric in ["euclidean", "correlation"]
+    ],
+)
+def test_pairwise(
+    size: typing.Tuple[int, int],
+    chunk: typing.Tuple[int, int],
+    device: DeviceTypes,
+    metric: MetricTypes,
 ) -> None:
     skip_gpu_tests_if_no_gpu(device)
     x = get_vectors(size=size, chunk=chunk)
-    distance_matrix = pairwise_distance(x, metric="correlation", device=device)
-    distance_array = pdist(x, metric="correlation")
+    distance_matrix = pairwise_distance(x, metric=metric, device=device)
+    distance_array = pdist(x, metric=metric)
     expected_matrix = squareform(distance_array)
-    np.testing.assert_almost_equal(distance_matrix, expected_matrix)
-
-
-@pytest.mark.parametrize("size, chunk, device", METRIC_TEST_PARAMS)
-def test_distance_euclidean(
-    size: typing.Tuple[int, int], chunk: typing.Tuple[int, int], device: DeviceTypes
-) -> None:
-    skip_gpu_tests_if_no_gpu(device)
-    x = get_vectors(size=size, chunk=chunk)
-    distance_matrix = pairwise_distance(x, metric="euclidean", device=device)
-    expected_matrix = squareform(pdist(x))
     np.testing.assert_almost_equal(distance_matrix, expected_matrix)
 
 
