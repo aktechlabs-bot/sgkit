@@ -11,7 +11,7 @@ from scipy.spatial.distance import (  # type: ignore
     squareform,
 )
 
-from sgkit.distance.api import MetricTypes, TargetTypes, pairwise_distance
+from sgkit.distance.api import DeviceTypes, MetricTypes, pairwise_distance
 from sgkit.typing import ArrayLike
 
 
@@ -22,8 +22,8 @@ def detect_cuda_driver() -> bool:
         return False
 
 
-def skip_gpu_tests_if_no_gpu(target: TargetTypes) -> None:
-    if target == "gpu" and not detect_cuda_driver():
+def skip_gpu_tests_if_no_gpu(device: DeviceTypes) -> None:
+    if device == "gpu" and not detect_cuda_driver():
         pytest.skip("Cuda driver not found")
 
 
@@ -77,7 +77,7 @@ def create_distance_matrix(
 
 
 @pytest.mark.parametrize(
-    "size, chunk, target",
+    "size, chunk, device",
     [
         ((100, 100), (20, 10), "cpu"),
         ((100, 100), (25, 10), "cpu"),
@@ -88,18 +88,18 @@ def create_distance_matrix(
     ],
 )
 def test_distance_correlation(
-    size: typing.Tuple[int, int], chunk: typing.Tuple[int, int], target: TargetTypes
+    size: typing.Tuple[int, int], chunk: typing.Tuple[int, int], device: DeviceTypes
 ) -> None:
-    skip_gpu_tests_if_no_gpu(target)
+    skip_gpu_tests_if_no_gpu(device)
     x = get_vectors(size=size, chunk=chunk)
-    distance_matrix = pairwise_distance(x, metric="correlation", target=target)
+    distance_matrix = pairwise_distance(x, metric="correlation", device=device)
     distance_array = pdist(x, metric="correlation")
     expected_matrix = squareform(distance_array)
     np.testing.assert_almost_equal(distance_matrix, expected_matrix)
 
 
 @pytest.mark.parametrize(
-    "size, chunk, target",
+    "size, chunk, device",
     [
         ((100, 100), (20, 10), "cpu"),
         ((100, 100), (25, 10), "cpu"),
@@ -110,11 +110,11 @@ def test_distance_correlation(
     ],
 )
 def test_distance_euclidean(
-    size: typing.Tuple[int, int], chunk: typing.Tuple[int, int], target: TargetTypes
+    size: typing.Tuple[int, int], chunk: typing.Tuple[int, int], device: DeviceTypes
 ) -> None:
-    skip_gpu_tests_if_no_gpu(target)
+    skip_gpu_tests_if_no_gpu(device)
     x = get_vectors(size=size, chunk=chunk)
-    distance_matrix = pairwise_distance(x, metric="euclidean", target=target)
+    distance_matrix = pairwise_distance(x, metric="euclidean", device=device)
     expected_matrix = squareform(pdist(x))
     np.testing.assert_almost_equal(distance_matrix, expected_matrix)
 
@@ -148,7 +148,7 @@ def test_distance_ndarray() -> None:
 
 
 @pytest.mark.parametrize(
-    "metric, metric_func, dtype, target",
+    "metric, metric_func, dtype, device",
     [
         ("euclidean", euclidean, "f8", "cpu"),
         ("euclidean", euclidean, "i8", "cpu"),
@@ -164,9 +164,9 @@ def test_missing_values(
     metric: MetricTypes,
     metric_func: typing.Callable[[ArrayLike, ArrayLike], np.float64],
     dtype: str,
-    target: TargetTypes,
+    device: DeviceTypes,
 ) -> None:
-    skip_gpu_tests_if_no_gpu(target)
+    skip_gpu_tests_if_no_gpu(device)
     x = get_vectors(array_type="np", dtype=dtype)
 
     ri_times = np.random.randint(5, 20)
@@ -178,13 +178,13 @@ def test_missing_values(
             -100, -1
         )
 
-    distance_matrix = pairwise_distance(x, metric=metric, target=target)
+    distance_matrix = pairwise_distance(x, metric=metric, device=device)
     expected_matrix = create_distance_matrix(x, metric_func)
     np.testing.assert_almost_equal(distance_matrix, expected_matrix)
 
 
 @pytest.mark.parametrize(
-    "metric, dtype, expected, target",
+    "metric, dtype, expected, device",
     [
         ("euclidean", "i8", "float64", "cpu"),
         ("euclidean", "f4", "float32", "cpu"),
@@ -201,11 +201,11 @@ def test_missing_values(
     ],
 )
 def test_data_types(
-    metric: MetricTypes, dtype: str, expected: str, target: TargetTypes
+    metric: MetricTypes, dtype: str, expected: str, device: DeviceTypes
 ) -> None:
-    skip_gpu_tests_if_no_gpu(target)
+    skip_gpu_tests_if_no_gpu(device)
     x = get_vectors(dtype=dtype)
-    distance_matrix = pairwise_distance(x, metric=metric, target=target).compute()
+    distance_matrix = pairwise_distance(x, metric=metric, device=device).compute()
     assert distance_matrix.dtype.name == expected
 
 
@@ -215,10 +215,10 @@ def test_undefined_metric() -> None:
         pairwise_distance(x, metric="not-implemented-metric")  # type: ignore[arg-type]
 
 
-def test_invalid_target() -> None:
+def test_invalid_device() -> None:
     x = get_vectors(array_type="np")
     with pytest.raises(ValueError):
-        pairwise_distance(x, target="invalid-target")  # type: ignore[arg-type]
+        pairwise_distance(x, device="invalid-device")  # type: ignore[arg-type]
 
 
 def test_wrong_dimension_array() -> None:
