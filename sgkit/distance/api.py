@@ -124,10 +124,6 @@ def pairwise_distance(
     metric_param = np.empty(n_map_param, dtype=x.dtype)
 
     def _pairwise_cpu(f: ArrayLike, g: ArrayLike) -> ArrayLike:
-        # This getattr is not required when the following issues are fixed and released
-        # https://github.com/dask/distributed/issues/4597
-        # https://github.com/numba/numba/issues/6821
-        # same thing below in _pairwise_gpu function
         result: ArrayLike = map_func(f[:, None, :], g, metric_param)
         # Adding a new axis to help combine chunks along this axis in the
         # reduction step (see the _aggregate and _combine functions below).
