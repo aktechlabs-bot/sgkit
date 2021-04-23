@@ -8,14 +8,14 @@ from sgkit.distance import metrics
 from sgkit.typing import ArrayLike
 
 MetricTypes = Literal["euclidean", "correlation"]
-TargetTypes = Literal["cpu", "gpu"]
+DeviceTypes = Literal["cpu", "gpu"]
 
 
 def pairwise_distance(
     x: ArrayLike,
     metric: MetricTypes = "euclidean",
     split_every: typing.Optional[int] = None,
-    target: TargetTypes = "cpu",
+    device: DeviceTypes = "cpu",
 ) -> da.array:
     """Calculates the pairwise distance between all pairs of row vectors in the
     given two dimensional array x.
@@ -62,7 +62,7 @@ def pairwise_distance(
 
         Omit to let dask heuristically decide a good default. A default can
         also be set globally with the split_every key in dask.config.
-    target
+    device
         The architecture to run the calculation on, either of cpu or gpu
 
     Returns
@@ -98,20 +98,20 @@ def pairwise_distance(
            [ 2.62956526e-01,  0.00000000e+00,  2.14285714e-01],
            [ 2.82353505e-03,  2.14285714e-01,  0.00000000e+00]])
     """
-    valid_targets = TargetTypes.__args__  # type: ignore[attr-defined]
-    if target not in valid_targets:
+    valid_devices = DeviceTypes.__args__  # type: ignore[attr-defined]
+    if device not in valid_devices:
         raise ValueError(
-            f"Invalid Target, expected one of {valid_targets}, got: {target}"
+            f"Invalid Device, expected one of {valid_devices}, got: {device}"
         )
     try:
-        map_func_name = f"{metric}_map_{target}"
-        reduce_func_name = f"{metric}_reduce_{target}"
+        map_func_name = f"{metric}_map_{device}"
+        reduce_func_name = f"{metric}_reduce_{device}"
         getattr(metrics, map_func_name)
         getattr(metrics, reduce_func_name)
         n_map_param = metrics.N_MAP_PARAM[metric]
     except AttributeError:
         raise NotImplementedError(
-            f"Given metric: '{metric}' is not implemented for '{target}'."
+            f"Given metric: '{metric}' is not implemented for '{device}'."
         )
 
     x = da.asarray(x)
@@ -140,7 +140,7 @@ def pairwise_distance(
         return result[..., np.newaxis]
 
     pairwise_func = _pairwise_cpu
-    if target == "gpu":
+    if device == "gpu":
         pairwise_func = _pairwise_gpu  # pragma: no cover
 
     # concatenate in blockwise leads to high memory footprints, so instead
