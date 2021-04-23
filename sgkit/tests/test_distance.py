@@ -14,6 +14,29 @@ from scipy.spatial.distance import (  # type: ignore
 from sgkit.distance.api import DeviceTypes, MetricTypes, pairwise_distance
 from sgkit.typing import ArrayLike
 
+METRIC_TEST_PARAMS = (
+    [
+        ((30, 30), (10, 10), "cpu"),
+        ((30, 30), (10, 5), "cpu"),
+        ((30, 30), (5, 10), "cpu"),
+        ((15, 30), (10, 10), "cpu"),
+        ((15, 30), (10, 5), "cpu"),
+        ((15, 30), (5, 10), "cpu"),
+        ((30, 15), (10, 10), "cpu"),
+        ((30, 15), (10, 5), "cpu"),
+        ((30, 15), (5, 10), "cpu"),
+        pytest.param((30, 30), (10, 10), "gpu", marks=pytest.mark.gpu),
+        pytest.param((30, 30), (10, 5), "gpu", marks=pytest.mark.gpu),
+        pytest.param((30, 30), (5, 10), "gpu", marks=pytest.mark.gpu),
+        pytest.param((15, 30), (10, 10), "gpu", marks=pytest.mark.gpu),
+        pytest.param((15, 30), (10, 5), "gpu", marks=pytest.mark.gpu),
+        pytest.param((15, 30), (5, 10), "gpu", marks=pytest.mark.gpu),
+        pytest.param((30, 15), (10, 10), "gpu", marks=pytest.mark.gpu),
+        pytest.param((30, 15), (10, 5), "gpu", marks=pytest.mark.gpu),
+        pytest.param((30, 15), (5, 10), "gpu", marks=pytest.mark.gpu),
+    ],
+)
+
 
 def detect_cuda_driver() -> bool:
     try:
@@ -76,17 +99,7 @@ def create_distance_matrix(
     return distance_matrix
 
 
-@pytest.mark.parametrize(
-    "size, chunk, device",
-    [
-        ((100, 100), (20, 10), "cpu"),
-        ((100, 100), (25, 10), "cpu"),
-        ((100, 100), (50, 10), "cpu"),
-        pytest.param((100, 100), (25, 10), "gpu", marks=pytest.mark.gpu),
-        pytest.param((100, 100), (20, 10), "gpu", marks=pytest.mark.gpu),
-        pytest.param((100, 100), (50, 10), "gpu", marks=pytest.mark.gpu),
-    ],
-)
+@pytest.mark.parametrize("size, chunk, device", METRIC_TEST_PARAMS)
 def test_distance_correlation(
     size: typing.Tuple[int, int], chunk: typing.Tuple[int, int], device: DeviceTypes
 ) -> None:
@@ -98,29 +111,7 @@ def test_distance_correlation(
     np.testing.assert_almost_equal(distance_matrix, expected_matrix)
 
 
-@pytest.mark.parametrize(
-    "size, chunk, device",
-    [
-        ((30, 30), (10, 10), "cpu"),
-        ((30, 30), (10, 5), "cpu"),
-        ((30, 30), (5, 10), "cpu"),
-        ((15, 30), (10, 10), "cpu"),
-        ((15, 30), (10, 5), "cpu"),
-        ((15, 30), (5, 10), "cpu"),
-        ((30, 15), (10, 10), "cpu"),
-        ((30, 15), (10, 5), "cpu"),
-        ((30, 15), (5, 10), "cpu"),
-        pytest.param((30, 30), (10, 10), "gpu", marks=pytest.mark.gpu),
-        pytest.param((30, 30), (10, 5), "gpu", marks=pytest.mark.gpu),
-        pytest.param((30, 30), (5, 10), "gpu", marks=pytest.mark.gpu),
-        pytest.param((15, 30), (10, 10), "gpu", marks=pytest.mark.gpu),
-        pytest.param((15, 30), (10, 5), "gpu", marks=pytest.mark.gpu),
-        pytest.param((15, 30), (5, 10), "gpu", marks=pytest.mark.gpu),
-        pytest.param((30, 15), (10, 10), "gpu", marks=pytest.mark.gpu),
-        pytest.param((30, 15), (10, 5), "gpu", marks=pytest.mark.gpu),
-        pytest.param((30, 15), (5, 10), "gpu", marks=pytest.mark.gpu),
-    ],
-)
+@pytest.mark.parametrize("size, chunk, device", METRIC_TEST_PARAMS)
 def test_distance_euclidean(
     size: typing.Tuple[int, int], chunk: typing.Tuple[int, int], device: DeviceTypes
 ) -> None:
