@@ -158,7 +158,7 @@ def pairwise_distance(
 
         Parameters
         ----------
-        x
+        x_chunk
             [array-like, shape: (M, M, N, 1)]
             An array like two dimensional matrix. The dimension is as follows:
             M is the chunk size on axis=0 for `x` (input for `pairwise_distance`
