@@ -31,6 +31,8 @@ jobs:
         run: |
           conda install -c conda-forge gsl
           conda install -c numba/label/dev numba
+          conda install -c anaconda cudatoolkit
+
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
