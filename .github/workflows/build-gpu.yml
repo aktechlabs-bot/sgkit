@@ -14,28 +14,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          apt update -y
-          apt install libgsl-dev   # Needed for msprime < 1.0. Binary wheels include GSL for >= 1.0
-          apt install graphviz  # Needed for documentation
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt -r requirements-doc.txt
-      - name: Run pre-commit
-        uses: pre-commit/action@v2.0.0
-      - name: Check for Sphinx doc warnings
-        run: |
-          cd docs
-          make html SPHINXOPTS="-W --keep-going -n"
-      - name: Test with pytest and coverage
-        run: |
-          pytest -m gpu -v --cov=sgkit --cov-report=term-missing
-      - name: Upload coverage to Codecov
+
+      - name: Set up Python
+        uses: conda-incubator/setup-miniconda@v2
         env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          CONDA: /home/runnerx/miniconda3
+        with:
+          miniconda-version: "latest"
+
+      - name: Install dependencies
+        shell: bash -l {0}
         run: |
-          codecov
+          conda install -c gsl
+          conda install -c numba/label/dev numba
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Test with pytest
+        run: |
+          pytest -m gpu -v
