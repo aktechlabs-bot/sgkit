@@ -1,4 +1,4 @@
-name: Build
+name: Build renamed
 
 on: [push, pull_request]
 
